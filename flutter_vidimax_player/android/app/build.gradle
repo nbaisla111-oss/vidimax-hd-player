@@ -24,8 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.vidimax.hdplayer"
-    compileSdkVersion 34
-    compileSdk 34
+    compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -43,9 +42,7 @@ android {
 
     defaultConfig {
         applicationId "com.vidimax.hdplayer"
-        minSdkVersion 24
         minSdk 24
-        targetSdkVersion 34
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

@@ -1,14 +1,3 @@
-buildscript {
-    ext.kotlin_version = '1.9.24'
-    ext.compileSdkVersion = 34
-    ext.targetSdkVersion = 34
-    ext.minSdkVersion = 24
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
 allprojects {
     repositories {
         google()
@@ -22,17 +11,6 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
-}
-
-// Safely ensure all Android plugin subprojects have compileSdkVersion 34 using whenPluginAdded
-subprojects {
-    project.plugins.whenPluginAdded { plugin ->
-        if (plugin.class.name.startsWith("com.android.build.gradle")) {
-            project.android {
-                compileSdkVersion 34
-            }
-        }
-    }
 }
 
 tasks.register("clean", Delete) {
