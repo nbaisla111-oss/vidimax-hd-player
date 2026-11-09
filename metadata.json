@@ -1,0 +1,6 @@
+{
+  "name": "VidiMax HD Player - All-in-One Offline Android Media Player",
+  "description": "Production-ready offline Android video player featuring folder scanning, custom gestures, private PIN vault, Video-to-MP3 converter, WhatsApp status saver, and Flutter source repository.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
