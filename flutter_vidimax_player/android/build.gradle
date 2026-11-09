@@ -24,6 +24,17 @@ subprojects {
     project.evaluationDependsOn(':app')
 }
 
+// Safely ensure all Android plugin subprojects have compileSdkVersion 34 using whenPluginAdded
+subprojects {
+    project.plugins.whenPluginAdded { plugin ->
+        if (plugin.class.name.startsWith("com.android.build.gradle")) {
+            project.android {
+                compileSdkVersion 34
+            }
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
