@@ -1,3 +1,14 @@
+buildscript {
+    ext.kotlin_version = '1.9.24'
+    ext.compileSdkVersion = 34
+    ext.targetSdkVersion = 34
+    ext.minSdkVersion = 24
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -11,20 +22,6 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
-}
-
-// Ensure all Flutter plugin subprojects have compileSdkVersion 34
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                if (namespace == null) {
-                    namespace project.group
-                }
-                compileSdkVersion 34
-            }
-        }
-    }
 }
 
 tasks.register("clean", Delete) {
