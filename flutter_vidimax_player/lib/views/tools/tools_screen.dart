@@ -323,7 +323,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     )
                   : GridView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      gridDelegate: const dynamicDelegate(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         childAspectRatio: 0.85,
                         crossAxisSpacing: 12,
@@ -427,13 +427,4 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
       ),
     );
   }
-}
-
-class dynamicDelegate extends SliverGridDelegateWithFixedCrossAxisCount {
-  const dynamicDelegate({
-    required super.crossAxisCount,
-    super.mainAxisSpacing,
-    super.crossAxisSpacing,
-    super.childAspectRatio,
-  });
 }

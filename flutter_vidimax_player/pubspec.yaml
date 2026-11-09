@@ -36,18 +36,12 @@ dependencies:
   # Media Utilities & Sharing
   share_plus: ^9.0.0
   image_picker: ^1.1.0
-  flutter_ffmpeg_kit:
-    git:
-      url: https://github.com/arthenica/ffmpeg-kit.git
-      ref: v6.0-LTS
 
   # UI & Design
   google_fonts: ^6.2.1
   flutter_staggered_animations: ^1.1.1
   smooth_page_indicator: ^1.1.0
-  glassmorphism_ui: ^0.3.0
   intl: ^0.19.0
-  lucide_icons: ^0.257.0
 
 dev_dependencies:
   flutter_test:
@@ -58,4 +52,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-    - assets/icons/

@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final folderList = videoCtrl.folders.values.toList();
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const dynamicDelegate(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.15,
         crossAxisSpacing: 12,
