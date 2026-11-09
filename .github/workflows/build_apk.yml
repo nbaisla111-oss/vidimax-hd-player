@@ -32,6 +32,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          flutter-version: '3.24.5'
           cache: true
 
       - name: 🩺 Flutter Doctor Check
@@ -45,19 +46,18 @@ jobs:
       - name: 🔨 Build Android Release APK
         run: |
           cd flutter_vidimax_player
-          flutter build apk --release
+          flutter build apk --release --no-tree-shake-icons
 
       - name: 🚀 Upload APK Artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: VidiMax-HD-Player-Release-APK
           path: flutter_vidimax_player/build/app/outputs/flutter-apk/*.apk
           retention-days: 30
 
       - name: 📋 Summary of Output
+        if: always()
         run: |
-          echo "### 🎉 Android APK Build Completed!" >> $GITHUB_STEP_SUMMARY
-          echo "The APK has been successfully built and attached as an artifact in this workflow run." >> $GITHUB_STEP_SUMMARY
-          echo "- **App:** VidiMax HD Player v1.0.0" >> $GITHUB_STEP_SUMMARY
-          echo "- **Target:** Android (Release APK)" >> $GITHUB_STEP_SUMMARY
-          echo "- **File:** app-release.apk" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎉 Android APK Build Run Completed!" >> $GITHUB_STEP_SUMMARY
+          echo "Check the Artifacts section above to download the APK file." >> $GITHUB_STEP_SUMMARY
