@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../controllers/tools_controller.dart';
 import '../../controllers/video_controller.dart';
 import '../../models/status_item_model.dart';
@@ -244,6 +246,189 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
               ),
             ),
           ],
+          if (toolsCtrl.lastExtractedAudio != null && !toolsCtrl.isConverting) ...[
+            const SizedBox(height: 24),
+            _buildExtractedAudioPlayer(toolsCtrl),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtractedAudioPlayer(ToolsController toolsCtrl) {
+    final file = toolsCtrl.lastExtractedAudio;
+    if (file == null) return const SizedBox.shrink();
+
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    final position = toolsCtrl.audioPosition;
+    final duration = toolsCtrl.audioDuration;
+
+    String formatDuration(Duration d) {
+      final mins = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+      final secs = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+      return '$mins:$secs';
+    }
+
+    final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
+    final currentMs = position.inMilliseconds.toDouble().clamp(0.0, maxMs);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.cardDark,
+            const Color(0xFF1E1B4B).withOpacity(0.6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primaryViolet.withOpacity(0.4), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryViolet.withOpacity(0.15),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentEmerald.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded, color: AppTheme.accentEmerald, size: 20),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Extracted Audio Ready',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.share_rounded, color: AppTheme.secondaryCyan, size: 22),
+                tooltip: 'Share Audio',
+                onPressed: () {
+                  Share.shareXFiles([XFile(file.path)], text: 'Extracted with VidiMax HD Player');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            fileName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Saved in /Music/VidiMax/ • MP3 Audio',
+            style: TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+          ),
+          const SizedBox(height: 14),
+
+          // Audio Player Controls & Slider
+          Row(
+            children: [
+              // Play / Pause Button
+              GestureDetector(
+                onTap: () => toolsCtrl.togglePlayExtractedAudio(),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.primaryViolet, Color(0xFF6366F1)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryViolet.withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    toolsCtrl.isPlayingAudio
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Progress Bar & Timestamps
+              Expanded(
+                child: Column(
+                  children: [
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        activeTrackColor: AppTheme.primaryViolet,
+                        inactiveTrackColor: Colors.white12,
+                        thumbColor: Colors.white,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                        trackHeight: 3,
+                        overlayColor: AppTheme.primaryViolet.withOpacity(0.2),
+                      ),
+                      child: Slider(
+                        value: currentMs,
+                        min: 0.0,
+                        max: maxMs,
+                        onChanged: (val) {
+                          toolsCtrl.seekAudio(Duration(milliseconds: val.toInt()));
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            formatDuration(position),
+                            style: const TextStyle(color: AppTheme.textSecondaryDark, fontSize: 11),
+                          ),
+                          Text(
+                            duration.inMilliseconds > 0 ? formatDuration(duration) : '--:--',
+                            style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Stop Button
+              IconButton(
+                icon: const Icon(Icons.stop_rounded, color: AppTheme.textMutedDark, size: 24),
+                tooltip: 'Stop',
+                onPressed: () => toolsCtrl.stopAudio(),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -45,6 +45,12 @@ class ToolsController extends ChangeNotifier {
       _audioPosition = newPosition;
       notifyListeners();
     });
+
+    _audioPlayer.onPlayerComplete.listen((_) {
+      _isPlayingAudio = false;
+      _audioPosition = Duration.zero;
+      notifyListeners();
+    });
   }
 
   Future<void> extractAudio({
@@ -52,6 +58,7 @@ class ToolsController extends ChangeNotifier {
     required String outputName,
     int bitrate = 192,
   }) async {
+    await stopAudio();
     _isConverting = true;
     _conversionProgress = 0.0;
     _conversionError = null;
@@ -82,15 +89,25 @@ class ToolsController extends ChangeNotifier {
     if (_isPlayingAudio) {
       await _audioPlayer.pause();
     } else {
-      await _audioPlayer.play(DeviceFileSource(_lastExtractedAudio!.path));
+      if (_audioPlayer.state == PlayerState.paused) {
+        await _audioPlayer.resume();
+      } else {
+        await _audioPlayer.play(DeviceFileSource(_lastExtractedAudio!.path));
+      }
     }
     notifyListeners();
+  }
+
+  // ऑडियो सीक करने के लिए
+  Future<void> seekAudio(Duration position) async {
+    await _audioPlayer.seek(position);
   }
 
   // ऑडियो प्लेबैक बंद करने के लिए
   Future<void> stopAudio() async {
     await _audioPlayer.stop();
     _isPlayingAudio = false;
+    _audioPosition = Duration.zero;
     notifyListeners();
   }
 

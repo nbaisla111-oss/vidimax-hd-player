@@ -44,20 +44,49 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
   }
 
   Future<void> _initializePlayer() async {
-    if (widget.video.path.startsWith('http')) {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.video.path));
-    } else {
-      _controller = VideoPlayerController.file(File(widget.video.path));
-    }
+    final videoOptions = VideoPlayerOptions(
+      mixWithOthers: false,
+      allowBackgroundPlayback: false,
+    );
 
     try {
+      if (widget.video.path.startsWith('http')) {
+        _controller = VideoPlayerController.networkUrl(
+          Uri.parse(widget.video.path),
+          videoPlayerOptions: videoOptions,
+        );
+      } else {
+        _controller = VideoPlayerController.file(
+          File(widget.video.path),
+          videoPlayerOptions: videoOptions,
+        );
+      }
+
       await _controller.initialize();
       _controller.addListener(_videoListener);
-      setState(() => _isInitialized = true);
-      _controller.play();
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+      await _controller.play();
       _startHideTimer();
     } catch (e) {
-      debugPrint("Error initializing player: $e");
+      debugPrint("Primary video initialization error: $e");
+      try {
+        if (widget.video.path.startsWith('http')) {
+          _controller = VideoPlayerController.networkUrl(Uri.parse(widget.video.path));
+        } else {
+          _controller = VideoPlayerController.file(File(widget.video.path));
+        }
+        await _controller.initialize();
+        _controller.addListener(_videoListener);
+        if (mounted) {
+          setState(() => _isInitialized = true);
+        }
+        await _controller.play();
+        _startHideTimer();
+      } catch (retryError) {
+        debugPrint("Fallback video initialization error: $retryError");
+      }
     }
   }
 
@@ -168,18 +197,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
             fit: StackFit.expand,
             children: [
               // Video Surface
-              Center(
-                child: _isInitialized
-                    ? FittedBox(
-                        fit: _aspectRatioFit,
-                        child: SizedBox(
-                          width: _controller.value.size.width,
-                          height: _controller.value.size.height,
-                          child: VideoPlayer(_controller),
-                        ),
-                      )
-                    : const CircularProgressIndicator(color: AppTheme.primaryViolet),
-              ),
+              _buildVideoSurface(),
 
               // Brightness / Volume on-screen indicators
               if (_showBrightnessIndicator)
@@ -267,6 +285,41 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoSurface() {
+    if (!_isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryViolet),
+      );
+    }
+
+    final videoSize = _controller.value.size;
+    final bool hasValidDimensions = videoSize.width > 0 && videoSize.height > 0;
+    final double videoAspect = (hasValidDimensions && _controller.value.aspectRatio > 0)
+        ? _controller.value.aspectRatio
+        : (16 / 9);
+
+    if (_aspectRatioFit == BoxFit.contain) {
+      return Center(
+        child: AspectRatio(
+          aspectRatio: videoAspect,
+          child: VideoPlayer(_controller),
+        ),
+      );
+    }
+
+    return SizedBox.expand(
+      child: FittedBox(
+        fit: _aspectRatioFit,
+        clipBehavior: Clip.hardEdge,
+        child: SizedBox(
+          width: hasValidDimensions ? videoSize.width : 1280,
+          height: hasValidDimensions ? videoSize.height : 720,
+          child: VideoPlayer(_controller),
         ),
       ),
     );
