@@ -8,65 +8,73 @@ class StatusSaverService {
   factory StatusSaverService() => _instance;
   StatusSaverService._internal();
 
+  // WhatsApp और WhatsApp Business के सभी संभावित सही पाथ (Android 10 से Android 14+ तक)
   final List<String> statusDirectories = [
-    // Android 11+ WhatsApp path
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
-    // Legacy WhatsApp path
     '/storage/emulated/0/WhatsApp/Media/.Statuses',
-    // Android 11+ WhatsApp Business path
     '/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses',
-    // Legacy WhatsApp Business path
     '/storage/emulated/0/WhatsApp Business/Media/.Statuses',
+    // कुछ नए एंड्रॉइड वर्जन्स के वैकल्पिक पाथ
+    '/storage/emulated/0/WhatsApp/Media/WhatsApp Video/.Statuses',
+    '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.Statuses',
   ];
 
-  /// Scan WhatsApp status directory for photos and videos
+  /// Scan WhatsApp status directory for photos and videos securely
   Future<List<StatusItemModel>> fetchStatuses({StatusAppSource? filterSource}) async {
     final List<StatusItemModel> list = [];
+    final Set<String> uniquePaths = {}; // डुप्लीकेट एंट्री रोकने के लिए
 
     for (final dirPath in statusDirectories) {
       final dir = Directory(dirPath);
-      if (await dir.exists()) {
-        final isBusiness = dirPath.contains('w4b') || dirPath.contains('WhatsApp Business');
-        final source = isBusiness ? StatusAppSource.whatsappBusiness : StatusAppSource.whatsapp;
+      try {
+        if (await dir.exists()) {
+          final isBusiness = dirPath.contains('w4b') || dirPath.contains('WhatsApp Business');
+          final source = isBusiness ? StatusAppSource.whatsappBusiness : StatusAppSource.whatsapp;
 
-        if (filterSource != null && filterSource != source) continue;
+          if (filterSource != null && filterSource != source) continue;
 
-        try {
           final entities = dir.listSync();
           for (final entity in entities) {
             if (entity is File) {
-              final ext = p.extension(entity.path).toLowerCase();
+              final filePath = entity.path;
+              if (uniquePaths.contains(filePath)) continue;
+
+              final ext = p.extension(filePath).toLowerCase();
               final isVideo = ['.mp4', '.3gp', '.mkv'].contains(ext);
               final isImage = ['.jpg', '.jpeg', '.png'].contains(ext);
 
               if (isVideo || isImage) {
+                uniquePaths.add(filePath);
                 final stat = entity.statSync();
-                // Check if already saved in VidiMax gallery
+                
+                // चेक करें कि क्या यह स्टेटस पहले से VidiMax गैलरी में सेव है या नहीं
                 final savedDir = Directory('/storage/emulated/0/Pictures/VidiMax_Status');
-                final savedFile = File(p.join(savedDir.path, p.basename(entity.path)));
+                final savedFile = File(p.join(savedDir.path, p.basename(filePath)));
                 final isSaved = await savedFile.exists();
 
                 list.add(
                   StatusItemModel(
-                    id: entity.path.hashCode.toString(),
-                    title: p.basename(entity.path),
-                    path: entity.path,
+                    id: filePath.hashCode.toString(),
+                    title: p.basename(filePath),
+                    path: filePath,
                     file: entity,
                     mediaType: isVideo ? StatusMediaType.video : StatusMediaType.image,
                     source: source,
-                    size: stat.size, // Fixed: sizeBytes changed to size
-                    modifiedDate: stat.modified, // Passed as DateTime object as per model
+                    size: stat.size, 
+                    modifiedDate: stat.modified, 
                     isSaved: isSaved,
                   ),
                 );
               }
             }
           }
-        } catch (_) {}
+        }
+      } catch (e) {
+        // किसी फोल्डर में परमिशन या रीड़ एरर आने पर ऐप क्रैश नहीं होगा, आगे बढ़ जाएगा
       }
     }
 
-    // Sort by recent first
+    // सबसे नए स्टेटस को सबसे ऊपर दिखाने के लिए सॉर्ट करना
     list.sort((a, b) => b.modifiedDate.compareTo(a.modifiedDate));
     return list;
   }
