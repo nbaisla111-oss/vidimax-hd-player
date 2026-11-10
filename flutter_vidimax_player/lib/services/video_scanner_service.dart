@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/video_model.dart';
 import '../models/folder_model.dart';
@@ -14,7 +13,7 @@ class VideoScannerService {
     '.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.3gp', '.ts', '.m4v'
   ];
 
-  /// Scan storage directories for video files
+  /// Scan storage directories for video files instantly without heavy thumbnail lag
   Future<List<VideoModel>> scanDeviceVideos() async {
     final List<VideoModel> videos = [];
 
@@ -28,8 +27,6 @@ class VideoScannerService {
       Directory('/storage/emulated/0/Videos'),
     ];
 
-    final cacheDir = await getTemporaryDirectory();
-
     for (final dir in targetDirs) {
       if (await dir.exists()) {
         try {
@@ -42,19 +39,8 @@ class VideoScannerService {
                   final folderName = p.basename(p.dirname(entity.path));
                   final fileName = p.basename(entity.path);
 
-                  // Extract thumbnail if needed
-                  String? thumbPath;
-                  try {
-                    thumbPath = await VideoThumbnail.thumbnailFile(
-                      video: entity.path,
-                      thumbnailPath: cacheDir.path,
-                      imageFormat: ImageFormat.JPEG,
-                      maxHeight: 200,
-                      quality: 75,
-                    );
-                  } catch (_) {
-                    thumbPath = null;
-                  }
+                  // थंबनेल जनरेशन यहाँ से हटा दिया गया है ताकि स्कैनिंग में एक सेकंड भी न लगे!
+                  // थंबनेल UI पर अपने आप डिफ़ॉल्ट या बाद में लोड हो जाएगा।
 
                   videos.add(
                     VideoModel(
@@ -62,10 +48,10 @@ class VideoScannerService {
                       title: p.basenameWithoutExtension(fileName),
                       path: entity.path,
                       folderName: folderName.isEmpty ? 'Root' : folderName,
-                      durationMs: 60000, // Estimated default or resolved via controller
+                      durationMs: 60000, 
                       sizeBytes: stat.size,
                       dateModified: stat.modified.millisecondsSinceEpoch,
-                      thumbnailPath: thumbPath,
+                      thumbnailPath: null, // Fast loading optimization
                       resolution: '1080p FHD',
                     ),
                   );
