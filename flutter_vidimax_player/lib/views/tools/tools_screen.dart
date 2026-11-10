@@ -307,7 +307,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.whatsapp_rounded, size: 56, color: AppTheme.accentEmerald.withOpacity(0.5)),
+                          Icon(Icons.chat_rounded, size: 56, color: AppTheme.accentEmerald.withOpacity(0.5)), // Fixed: whatsapp_rounded replaced with chat_rounded
                           const SizedBox(height: 16),
                           const Text(
                             'No WhatsApp Statuses Found',
