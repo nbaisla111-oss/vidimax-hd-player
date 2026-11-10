@@ -41,6 +41,7 @@ jobs:
       - name: 📦 Install Flutter Dependencies
         run: |
           cd flutter_vidimax_player
+          flutter clean
           flutter pub get
 
       - name: 🔨 Build Android Release APK
