@@ -15,7 +15,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, dynamic>> _pages = [
+  final List> _pages = [
     {
       'icon': Icons.movie_filter_rounded,
       'title': 'Ultra HD Offline Playback',
@@ -137,7 +137,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
-                            lineHeight: 1.5,
+                            height: 1.5, // Fixed: lineHeight replaced with height
                             color: AppTheme.textSecondaryDark,
                           ),
                         ),
