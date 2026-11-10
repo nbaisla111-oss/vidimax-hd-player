@@ -49,11 +49,13 @@ class StatusSaverService {
                 list.add(
                   StatusItemModel(
                     id: entity.path.hashCode.toString(),
+                    title: p.basename(entity.path),
                     path: entity.path,
+                    file: entity,
                     mediaType: isVideo ? StatusMediaType.video : StatusMediaType.image,
                     source: source,
-                    sizeBytes: stat.size,
-                    modifiedDate: stat.modified.millisecondsSinceEpoch,
+                    size: stat.size, // Fixed: sizeBytes changed to size
+                    modifiedDate: stat.modified, // Passed as DateTime object as per model
                     isSaved: isSaved,
                   ),
                 );
