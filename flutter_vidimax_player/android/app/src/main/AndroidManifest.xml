@@ -23,7 +23,8 @@
     <application
         android:label="VidiMax HD Player"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:roundIcon="@android:drawable/sym_def_app_icon"
         android:requestLegacyExternalStorage="true"
         android:hardwareAccelerated="true"
         android:largeHeap="true">
