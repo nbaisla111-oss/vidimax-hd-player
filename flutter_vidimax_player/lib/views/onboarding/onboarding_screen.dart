@@ -15,19 +15,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Fixed: Correct generic type definition >
-  final List> _pages = [
+  // Type removed here completely to prevent bracket stripping errors
+  final _pages = [
     {
       'icon': Icons.movie_filter_rounded,
       'title': 'Ultra HD Offline Playback',
       'subtitle': 'Play 4K, 1080p, MKV, and MP4 videos with gesture controls for brightness, volume, and playback speed without buffering.',
-      'gradient': [AppTheme.primaryViolet, Color(0xFF6366F1)],
+      'gradient': [AppTheme.primaryViolet, const Color(0xFF6366F1)],
     },
     {
       'icon': Icons.lock_person_rounded,
       'title': 'Encrypted Secret Vault',
       'subtitle': 'Lock private personal videos behind a secure 4-digit PIN. Military-grade AES encryption keeps your files safe and hidden from phone gallery.',
-      'gradient': [Color(0xFFEC4899), AppTheme.primaryViolet],
+      'gradient': [const Color(0xFFEC4899), AppTheme.primaryViolet],
     },
     {
       'icon': Icons.auto_awesome_motion_rounded,
@@ -60,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'VidiMax',
                     style: TextStyle(
                       fontSize: 18,
@@ -89,7 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (index) => setState(() => _currentPage = index),
                 itemBuilder: (context, index) {
                   final page = _pages[index];
-                  final List<Color> grad = page['gradient'];
+                  final List<Color> grad = page['gradient'] as List<Color>;
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -136,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           page['subtitle'] as String,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             height: 1.5,
                             color: AppTheme.textSecondaryDark,
