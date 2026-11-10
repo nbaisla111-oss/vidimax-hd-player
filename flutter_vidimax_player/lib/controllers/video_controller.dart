@@ -18,6 +18,7 @@ class VideoController extends ChangeNotifier {
   bool _isLoading = false;
   bool _hasPermission = false;
   String? _selectedFolder;
+  bool _isInitialized = false; // ताकि बार-बार फालतू री-स्कैन न हो
 
   List<VideoModel> get videos => _filteredVideos;
   Map<String, FolderModel> get folders => _folders;
@@ -28,6 +29,11 @@ class VideoController extends ChangeNotifier {
   VideoSortMode get sortMode => _sortMode;
 
   Future<void> init() async {
+    // अगर पहले से डेटा लोड है, तो दोबारा फालतू लोडिंग स्पिनर मत दिखाओ (Instant Open)
+    if (_isInitialized && _allVideos.isNotEmpty) {
+      return;
+    }
+
     _hasPermission = await _permissions.hasStoragePermission();
     if (!_hasPermission) {
       _hasPermission = await _permissions.requestStoragePermissions();
@@ -39,18 +45,33 @@ class VideoController extends ChangeNotifier {
     }
   }
 
-  Future<void> loadVideos() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> loadVideos({bool forceRefresh = false}) async {
+    // अगर पहले से वीडियो मौजूद हैं और जबरदस्ती रिफ्रेश नहीं मांग रहे, तो लोडिंग स्पिनर मत चलाओ
+    if (_allVideos.isNotEmpty && !forceRefresh) {
+      return;
+    }
+
+    // केवल तभी लोडिंग स्पिनर दिखाओ जब बिल्कुल खाली हो या जबरदस्ती रिफ्रेश किया जा रहा हो
+    if (_allVideos.isEmpty) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     try {
+      // डिवाइस से वीडियो स्कैन करना
       _allVideos = await _scanner.scanDeviceVideos();
       _folders = _scanner.groupVideosByFolder(_allVideos);
       _applyFilterAndSort();
+      _isInitialized = true;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // नई वीडियो या फ्रेश लिस्ट लाने के लिए यूजर के लिए रिफ्रेश फंक्शन
+  Future<void> refreshVideos() async {
+    await loadVideos(forceRefresh: true);
   }
 
   void setSearchQuery(String query) {
