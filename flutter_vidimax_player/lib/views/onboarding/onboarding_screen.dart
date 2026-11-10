@@ -15,7 +15,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Fixed: Added proper generic type definition >
+  // Fixed: Correct generic type definition >
   final List> _pages = [
     {
       'icon': Icons.movie_filter_rounded,
