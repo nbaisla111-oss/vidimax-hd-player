@@ -5,6 +5,7 @@ import 'controllers/video_controller.dart';
 import 'controllers/vault_controller.dart';
 import 'controllers/tools_controller.dart';
 import 'controllers/theme_controller.dart';
+import 'controllers/music_controller.dart';
 import 'utils/app_theme.dart';
 import 'views/splash/splash_screen.dart';
 
@@ -26,6 +27,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeController()..init()),
         ChangeNotifierProvider(create: (_) => VideoController()..init()),
+        ChangeNotifierProvider(create: (_) => MusicController()..init()),
         ChangeNotifierProvider(create: (_) => VaultController()..checkStatus()),
         ChangeNotifierProvider(create: (_) => ToolsController()),
       ],
