@@ -45,7 +45,6 @@ android {
         applicationId "com.vidimax.hdplayer"
         minSdk 24
         targetSdk 35
-        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -61,7 +60,7 @@ android {
 }
 
 flutter {
-    source '../..'
+    source = '../..'
 }
 
 dependencies {
