@@ -3,25 +3,24 @@ allprojects {
         google()
         mavenCentral()
     }
+    ext {
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        minSdkVersion = 24
+        ndkVersion = "25.1.8937393"
+        flutter = [
+            compileSdkVersion: 35,
+            minSdkVersion: 24,
+            targetSdkVersion: 35,
+            ndkVersion: "25.1.8937393"
+        ]
+    }
 }
 
 rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
-
-subprojects { project ->
-    plugins.withId("com.android.library") {
-        project.android {
-            compileSdk = 35
-            compileSdkVersion = 35
-            if (namespace == null) {
-                namespace = project.group.toString()
-            }
-        }
-    }
-}
-
 subprojects {
     project.evaluationDependsOn(':app')
 }
