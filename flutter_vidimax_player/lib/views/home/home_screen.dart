@@ -316,7 +316,11 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => CustomVideoPlayerScreen(video: video),
+            builder: (_) => CustomVideoPlayerScreen(
+              video: video,
+              playlist: videoCtrl.videos,
+              initialIndex: index,
+            ),
           ),
         );
       },

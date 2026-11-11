@@ -351,15 +351,42 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
         final item = items[index];
         final sizeMb = (item.sizeBytes / (1024 * 1024)).toStringAsFixed(1);
 
-        return Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppTheme.cardDark,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.borderDark),
-          ),
-          child: Row(
-            children: [
+        return InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            if (isVideo) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CustomVideoPlayerScreen(
+                    video: VideoModel(
+                      id: item.id,
+                      title: item.originalName,
+                      path: item.encryptedPath,
+                      sizeBytes: item.sizeBytes,
+                      durationMs: item.durationMs,
+                      resolution: 'Vault Secure',
+                      dateModified: item.dateAdded,
+                      folderName: 'Private Vault',
+                    ),
+                    isVaultPlayback: true,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Playing private audio: ${item.originalName}')),
+              );
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppTheme.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.borderDark),
+            ),
+            child: Row(
+              children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -411,8 +438,9 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
