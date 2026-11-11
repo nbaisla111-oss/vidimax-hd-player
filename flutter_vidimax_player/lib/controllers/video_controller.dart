@@ -29,39 +29,44 @@ class VideoController extends ChangeNotifier {
   VideoSortMode get sortMode => _sortMode;
 
   Future<void> init() async {
-    // अगर पहले से डेटा लोड है, तो दोबारा फालतू लोडिंग स्पिनर मत दिखाओ (Instant Open)
-    if (_isInitialized && _allVideos.isNotEmpty) {
-      return;
+    // 1. सबसे पहले कैश्ड वीडियो तुरंत लोड करो (0ms Instant App Open - नो लोडिंग स्पिनर)
+    final cached = await _scanner.getCachedVideos();
+    if (cached.isNotEmpty) {
+      _allVideos = cached;
+      _folders = _scanner.groupVideosByFolder(_allVideos);
+      _applyFilterAndSort();
+      _isInitialized = true;
+      notifyListeners();
     }
 
+    // 2. परमिशन चेक करो
     _hasPermission = await _permissions.hasStoragePermission();
     if (!_hasPermission) {
       _hasPermission = await _permissions.requestStoragePermissions();
+      notifyListeners();
     }
-    notifyListeners();
 
     if (_hasPermission) {
-      await loadVideos();
+      // अगर पहले से कैश्ड वीडियो दिख रहे हैं, तो बैकग्राउंड में शांत स्कैन करो (कोई रुकावट नहीं)
+      await loadVideos(silentBackground: cached.isNotEmpty);
     }
   }
 
-  Future<void> loadVideos({bool forceRefresh = false}) async {
-    // अगर पहले से वीडियो मौजूद हैं और जबरदस्ती रिफ्रेश नहीं मांग रहे, तो लोडिंग स्पिनर मत चलाओ
-    if (_allVideos.isNotEmpty && !forceRefresh) {
-      return;
-    }
-
-    // केवल तभी लोडिंग स्पिनर दिखाओ जब बिल्कुल खाली हो या जबरदस्ती रिफ्रेश किया जा रहा हो
-    if (_allVideos.isEmpty) {
+  Future<void> loadVideos({bool forceRefresh = false, bool silentBackground = false}) async {
+    // अगर बिल्कुल खाली है और बैकग्राउंड नहीं है, तो लोडिंग इंडिकेटर दिखाओ
+    if (_allVideos.isEmpty && !silentBackground) {
       _isLoading = true;
       notifyListeners();
     }
 
     try {
-      // डिवाइस से वीडियो स्कैन करना
-      _allVideos = await _scanner.scanDeviceVideos();
-      _folders = _scanner.groupVideosByFolder(_allVideos);
-      _applyFilterAndSort();
+      // डिवाइस से तेज़ लक्षित स्कैन
+      final scanned = await _scanner.scanDeviceVideos();
+      if (scanned.isNotEmpty || _allVideos.isEmpty) {
+        _allVideos = scanned;
+        _folders = _scanner.groupVideosByFolder(_allVideos);
+        _applyFilterAndSort();
+      }
       _isInitialized = true;
     } finally {
       _isLoading = false;

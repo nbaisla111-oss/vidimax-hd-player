@@ -4,10 +4,12 @@ import 'package:audioplayers/audioplayers.dart'; // ऑडियो प्ले
 import '../models/status_item_model.dart';
 import '../services/audio_extractor_service.dart';
 import '../services/status_saver_service.dart';
+import '../services/permission_service.dart';
 
 class ToolsController extends ChangeNotifier {
   final AudioExtractorService _audioService = AudioExtractorService();
   final StatusSaverService _statusService = StatusSaverService();
+  final PermissionService _permissionService = PermissionService();
   final AudioPlayer _audioPlayer = AudioPlayer(); // इन-एप ऑडियो प्ले करने के लिए प्लेयर
 
   // Audio Extractor State
@@ -114,10 +116,12 @@ class ToolsController extends ChangeNotifier {
   // Status Saver State
   List<StatusItemModel> _statuses = [];
   bool _isLoadingStatuses = false;
+  bool _hasManagePermission = true;
   StatusAppSource _selectedSource = StatusAppSource.whatsapp;
 
   List<StatusItemModel> get statuses => _statuses;
   bool get isLoadingStatuses => _isLoadingStatuses;
+  bool get hasManagePermission => _hasManagePermission;
   StatusAppSource get selectedSource => _selectedSource;
 
   void setSelectedStatusSource(StatusAppSource source) {
@@ -130,11 +134,17 @@ class ToolsController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      _hasManagePermission = await _permissionService.hasManageStoragePermission();
       _statuses = await _statusService.fetchStatuses(filterSource: _selectedSource);
     } finally {
       _isLoadingStatuses = false;
       notifyListeners();
     }
+  }
+
+  Future<void> requestManagePermissionAndReload() async {
+    await _permissionService.requestManageStoragePermission();
+    await loadStatuses();
   }
 
   Future<void> saveStatus(StatusItemModel status) async {

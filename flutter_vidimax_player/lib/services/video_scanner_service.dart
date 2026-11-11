@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/video_model.dart';
 import '../models/folder_model.dart';
 
@@ -13,61 +15,139 @@ class VideoScannerService {
     '.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.3gp', '.ts', '.m4v'
   ];
 
-  /// Scan storage directories for video files instantly without heavy thumbnail lag
+  static const String _cacheKey = 'vidimax_cached_videos_v1';
+
+  /// Load cached videos from SharedPreferences for instant 0ms app launch
+  Future<List<VideoModel>> getCachedVideos() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_cacheKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(jsonStr);
+        final list = decoded.map((item) {
+          return VideoModel(
+            id: item['id'] ?? '',
+            title: item['title'] ?? '',
+            path: item['path'] ?? '',
+            folderName: item['folderName'] ?? 'Videos',
+            durationMs: item['durationMs'] ?? 60000,
+            sizeBytes: item['sizeBytes'] ?? 0,
+            dateModified: item['dateModified'] ?? 0,
+            thumbnailPath: item['thumbnailPath'],
+            resolution: item['resolution'] ?? 'HD',
+          );
+        }).where((v) => File(v.path).existsSync()).toList();
+        return list;
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Save scanned videos to cache
+  Future<void> _saveVideosToCache(List<VideoModel> videos) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mapped = videos.map((v) => {
+        'id': v.id,
+        'title': v.title,
+        'path': v.path,
+        'folderName': v.folderName,
+        'durationMs': v.durationMs,
+        'sizeBytes': v.sizeBytes,
+        'dateModified': v.dateModified,
+        'thumbnailPath': v.thumbnailPath,
+        'resolution': v.resolution,
+      }).toList();
+      await prefs.setString(_cacheKey, jsonEncode(mapped));
+    } catch (_) {}
+  }
+
+  /// Scan storage directories for video files fast without blocking UI
   Future<List<VideoModel>> scanDeviceVideos() async {
     final List<VideoModel> videos = [];
+    final Set<String> seenPaths = {};
 
-    final targetDirs = [
+    // Specific direct directories where videos are located on Android devices
+    final directDirs = [
+      Directory('/storage/emulated/0/DCIM/Camera'),
+      Directory('/storage/emulated/0/DCIM/Screenshots'),
+      Directory('/storage/emulated/0/DCIM/ScreenRecorder'),
       Directory('/storage/emulated/0/DCIM'),
       Directory('/storage/emulated/0/Movies'),
+      Directory('/storage/emulated/0/Movies/Instagram'),
       Directory('/storage/emulated/0/Download'),
-      Directory('/storage/emulated/0/WhatsApp/Media/WhatsApp Video'),
-      Directory('/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video'),
       Directory('/storage/emulated/0/Pictures'),
       Directory('/storage/emulated/0/Videos'),
+      Directory('/storage/emulated/0/WhatsApp/Media/WhatsApp Video'),
+      Directory('/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video'),
+      Directory('/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Video'),
+      Directory('/storage/emulated/0/Telegram/Telegram Video'),
+      Directory('/storage/emulated/0/Snaptube/download'),
+      Directory('/storage/emulated/0/Vidmate/download'),
+      Directory('/storage/emulated/0/ScreenRecorder'),
     ];
 
-    for (final dir in targetDirs) {
+    for (final dir in directDirs) {
       if (await dir.exists()) {
         try {
-          await for (final entity in dir.list(recursive: true, followLinks: false)) {
+          final entries = dir.listSync(recursive: false, followLinks: false);
+          for (final entity in entries) {
             if (entity is File) {
-              final ext = p.extension(entity.path).toLowerCase();
-              if (supportedExtensions.contains(ext)) {
-                try {
-                  final stat = await entity.stat();
-                  final folderName = p.basename(p.dirname(entity.path));
-                  final fileName = p.basename(entity.path);
-
-                  // थंबनेल जनरेशन यहाँ से हटा दिया गया है ताकि स्कैनिंग में एक सेकंड भी न लगे!
-                  // थंबनेल UI पर अपने आप डिफ़ॉल्ट या बाद में लोड हो जाएगा।
-
-                  videos.add(
-                    VideoModel(
-                      id: entity.path.hashCode.toString(),
-                      title: p.basenameWithoutExtension(fileName),
-                      path: entity.path,
-                      folderName: folderName.isEmpty ? 'Root' : folderName,
-                      durationMs: 60000, 
-                      sizeBytes: stat.size,
-                      dateModified: stat.modified.millisecondsSinceEpoch,
-                      thumbnailPath: null, // Fast loading optimization
-                      resolution: '1080p FHD',
-                    ),
-                  );
-                } catch (e) {
-                  // Ignore inaccessible files
+              _processFile(entity, seenPaths, videos);
+            } else if (entity is Directory) {
+              // Shallow scan 1 level deeper for subfolders (e.g. Movies/Instagram, DCIM/100MEDIA)
+              try {
+                final subEntries = entity.listSync(recursive: false, followLinks: false);
+                for (final sub in subEntries) {
+                  if (sub is File) {
+                    _processFile(sub, seenPaths, videos);
+                  }
                 }
-              }
+              } catch (_) {}
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          debugPrint("Folder scan skipped: ${dir.path} ($e)");
+        }
       }
     }
 
     // Sort by most recently modified
     videos.sort((a, b) => b.dateModified.compareTo(a.dateModified));
+
+    // Save to cache for instant future launches
+    if (videos.isNotEmpty) {
+      await _saveVideosToCache(videos);
+    }
+
     return videos;
+  }
+
+  void _processFile(File file, Set<String> seenPaths, List<VideoModel> videos) {
+    final ext = p.extension(file.path).toLowerCase();
+    if (!supportedExtensions.contains(ext)) return;
+    if (seenPaths.contains(file.path)) return;
+
+    try {
+      seenPaths.add(file.path);
+      final stat = file.statSync();
+      final folderName = p.basename(p.dirname(file.path));
+      final fileName = p.basename(file.path);
+
+      videos.add(
+        VideoModel(
+          id: file.path.hashCode.toString(),
+          title: p.basenameWithoutExtension(fileName),
+          path: file.path,
+          folderName: folderName.isEmpty ? 'Root' : folderName,
+          durationMs: 60000,
+          sizeBytes: stat.size,
+          dateModified: stat.modified.millisecondsSinceEpoch,
+          thumbnailPath: null,
+          resolution: '1080p FHD',
+        ),
+      );
+    } catch (_) {}
   }
 
   /// Group video list into folders

@@ -8,13 +8,34 @@ class StatusSaverService {
   factory StatusSaverService() => _instance;
   StatusSaverService._internal();
 
-  // WhatsApp और WhatsApp Business के सभी संभावित सही पाथ (Android 10 से Android 14+ तक)
+  // WhatsApp और WhatsApp Business के सभी संभावित सही पाथ (Android 10 से Android 14+ और Samsung Dual Messenger)
   final List<String> statusDirectories = [
+    // Standard Android 11, 12, 13, 14 Scoped Storage paths
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
-    '/storage/emulated/0/WhatsApp/Media/.Statuses',
+    '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses',
+    '/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/Statuses',
+    
+    // Legacy Android 9, 10 paths
+    '/storage/emulated/0/WhatsApp/Media/.Statuses',
+    '/storage/emulated/0/WhatsApp/Media/Statuses',
     '/storage/emulated/0/WhatsApp Business/Media/.Statuses',
-    // कुछ नए एंड्रॉइड वर्जन्स के वैकल्पिक पाथ
+    '/storage/emulated/0/WhatsApp Business/Media/Statuses',
+    
+    // Samsung Dual Messenger / Multi-User paths
+    '/storage/emulated/999/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
+    '/storage/emulated/999/WhatsApp/Media/.Statuses',
+    '/storage/emulated/999/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses',
+    '/storage/emulated/999/WhatsApp Business/Media/.Statuses',
+    '/storage/emulated/10/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
+    '/storage/emulated/10/WhatsApp/Media/.Statuses',
+
+    // Modded / Alternative WhatsApp builds (GBWhatsApp, etc.)
+    '/storage/emulated/0/Android/media/com.gbwhatsapp/GBWhatsApp/Media/.Statuses',
+    '/storage/emulated/0/GBWhatsApp/Media/.Statuses',
+    '/storage/emulated/0/Android/media/com.whatsapp.plus/WhatsApp Plus/Media/.Statuses',
+    
+    // Video subfolder caches
     '/storage/emulated/0/WhatsApp/Media/WhatsApp Video/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.Statuses',
   ];

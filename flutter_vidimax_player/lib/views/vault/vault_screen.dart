@@ -7,6 +7,7 @@ import '../../models/vault_item_model.dart';
 import '../../models/video_model.dart';
 import '../../utils/app_theme.dart';
 import '../player/custom_video_player_screen.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -437,8 +438,19 @@ class _VaultScreenState extends State<VaultScreen> {
                   itemBuilder: (context, idx) {
                     final v = videoCtrl.videos[idx];
                     return ListTile(
-                      title: Text(v.title, maxLines: 1, style: const TextStyle(color: Colors.white)),
-                      subtitle: Text('${v.formattedSize} · ${v.folderName}', style: const TextStyle(color: AppTheme.textMutedDark)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      leading: SizedBox(
+                        width: 64,
+                        height: 44,
+                        child: VideoThumbnailWidget(
+                          videoPath: v.path,
+                          width: 64,
+                          height: 44,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      title: Text(v.title, maxLines: 1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                      subtitle: Text('${v.formattedDuration} · ${v.formattedSize} · ${v.folderName}', style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11)),
                       trailing: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet),
                       onTap: () async {
                         Navigator.pop(ctx);

@@ -6,6 +6,7 @@ import '../../controllers/vault_controller.dart';
 import '../../models/video_model.dart';
 import '../../models/folder_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 import '../player/custom_video_player_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -332,24 +333,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // Thumbnail preview with duration badge
             Stack(
               children: [
-                ClipRRect(
+                VideoThumbnailWidget(
+                  videoPath: video.path,
+                  width: 110,
+                  height: 72,
                   borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: 110,
-                    height: 72,
-                    color: AppTheme.surfaceDark,
-                    child: video.thumbnailPath != null
-                        ? Image.file(
-                            File(video.thumbnailPath!),
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(Icons.movie_rounded, color: AppTheme.textMutedDark),
-                            ),
-                          )
-                        : const Center(
-                            child: Icon(Icons.play_circle_fill_rounded, color: AppTheme.primaryViolet, size: 32),
-                          ),
-                  ),
                 ),
                 Positioned(
                   bottom: 4,
