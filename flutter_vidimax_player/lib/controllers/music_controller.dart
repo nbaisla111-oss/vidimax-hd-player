@@ -102,6 +102,9 @@ class MusicController extends ChangeNotifier {
     await scanMusic();
   }
 
+  bool _isChangingTrack = false;
+  DateTime _trackStartTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   void _initAudioListeners() {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       _isPlaying = state == PlayerState.playing;
@@ -119,6 +122,14 @@ class MusicController extends ChangeNotifier {
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
+      // Discard complete events during track switching or false ExoPlayer stops
+      if (_isChangingTrack) return;
+
+      final elapsedMs = DateTime.now().difference(_trackStartTime).inMilliseconds;
+      if (elapsedMs < 1500 && _duration.inSeconds > 2) {
+        return;
+      }
+
       if (_loopMode == MusicLoopMode.single) {
         _audioPlayer.seek(Duration.zero);
         _audioPlayer.resume();
@@ -147,14 +158,19 @@ class MusicController extends ChangeNotifier {
   }
 
   Future<void> playSong(MusicModel song, {List<MusicModel>? queue}) async {
+    _isChangingTrack = true;
+    _trackStartTime = DateTime.now();
+
     if (queue != null && queue.isNotEmpty) {
       _playlist = List.from(queue);
     } else if (_playlist.isEmpty) {
       _playlist = List.from(_allSongs);
     }
 
-    _currentIndex = _playlist.indexWhere((s) => s.id == song.id);
-    if (_currentIndex == -1) {
+    final foundIdx = _playlist.indexWhere((s) => s.id == song.id);
+    if (foundIdx != -1) {
+      _currentIndex = foundIdx;
+    } else {
       _playlist.insert(0, song);
       _currentIndex = 0;
     }
@@ -170,6 +186,11 @@ class MusicController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint("Error playing song ${song.title}: $e");
+    } finally {
+      // Guard against false trailing completion event from previous song
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _isChangingTrack = false;
+      });
     }
     notifyListeners();
   }

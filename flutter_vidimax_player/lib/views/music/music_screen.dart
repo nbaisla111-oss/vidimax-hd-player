@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../controllers/music_controller.dart';
+import '../../controllers/vault_controller.dart';
 import '../../models/music_model.dart';
 import '../../utils/app_theme.dart';
 import 'mini_music_player.dart';
@@ -317,6 +318,23 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                   if (!song.path.startsWith('http')) {
                     Share.shareXFiles([XFile(song.path)], text: 'Sharing ${song.title}');
                   }
+                } else if (val == 'vault') {
+                  final vaultCtrl = Provider.of<VaultController>(context, listen: false);
+                  if (vaultCtrl.isConfigured) {
+                    await vaultCtrl.hideMusic(song);
+                    await musicCtrl.scanMusic();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Audio track moved to Secret Vault')),
+                      );
+                    }
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please set up your 4-digit PIN in the Vault tab first')),
+                      );
+                    }
+                  }
                 }
               },
               itemBuilder: (ctx) => [
@@ -327,6 +345,16 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                       Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
                       SizedBox(width: 10),
                       Text('Play Now', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'vault',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet, size: 18),
+                      SizedBox(width: 10),
+                      Text('Move to Secret Vault', style: TextStyle(color: Colors.white)),
                     ],
                   ),
                 ),

@@ -7,6 +7,7 @@ class VaultItemModel {
   final int dateAdded;
   final int durationMs;
   final String? thumbnailPath;
+  final String mediaType; // 'video' or 'music'
 
   VaultItemModel({
     required this.id,
@@ -17,6 +18,7 @@ class VaultItemModel {
     required this.dateAdded,
     required this.durationMs,
     this.thumbnailPath,
+    this.mediaType = 'video',
   });
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +30,7 @@ class VaultItemModel {
     'dateAdded': dateAdded,
     'durationMs': durationMs,
     'thumbnailPath': thumbnailPath,
+    'mediaType': mediaType,
   };
 
   factory VaultItemModel.fromJson(Map<String, dynamic> json) => VaultItemModel(
@@ -39,6 +42,7 @@ class VaultItemModel {
     dateAdded: json['dateAdded'] as int,
     durationMs: json['durationMs'] as int,
     thumbnailPath: json['thumbnailPath'] as String?,
+    mediaType: (json['mediaType'] as String?) ?? 'video',
   );
 }
 

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/music_model.dart';
 import '../models/vault_item_model.dart';
 import '../models/video_model.dart';
 import '../services/vault_encryption_service.dart';
@@ -11,6 +12,7 @@ class VaultController extends ChangeNotifier {
   bool _isConfigured = false;
   bool _isUnlocked = false;
   String _activePin = '';
+  String _recoveryCode = '';
   List<VaultItemModel> _vaultItems = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -18,24 +20,26 @@ class VaultController extends ChangeNotifier {
   bool get isConfigured => _isConfigured;
   bool get isUnlocked => _isUnlocked;
   List<VaultItemModel> get vaultItems => _vaultItems;
+  List<VaultItemModel> get videoItems => _vaultItems.where((i) => i.mediaType == 'video').toList();
+  List<VaultItemModel> get musicItems => _vaultItems.where((i) => i.mediaType == 'music').toList();
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String get activePin => _activePin;
+  String get recoveryCode => _recoveryCode;
 
   Future<void> checkStatus() async {
     _isConfigured = await _vaultService.isVaultConfigured();
+    if (_isConfigured) {
+      _recoveryCode = await _vaultService.getRecoveryCode();
+    }
     notifyListeners();
   }
 
-  Future<void> setupNewPin({
-    required String pin,
-    required String question,
-    required String answer,
-  }) async {
+  Future<void> setupNewPin({required String pin}) async {
     _isLoading = true;
     notifyListeners();
     try {
-      await _vaultService.setupPin(pin: pin, securityQuestion: question, securityAnswer: answer);
+      _recoveryCode = await _vaultService.setupPin(pin: pin);
       _isConfigured = true;
       _activePin = pin;
       _isUnlocked = true;
@@ -55,13 +59,44 @@ class VaultController extends ChangeNotifier {
     if (isValid) {
       _activePin = pin;
       _isUnlocked = true;
+      _recoveryCode = await _vaultService.getRecoveryCode();
       await _loadVaultItemsFromPrefs();
     } else {
-      _errorMessage = 'Incorrect PIN. Please try again.';
+      _errorMessage = 'Incorrect PIN. Try again.';
     }
     _isLoading = false;
     notifyListeners();
     return isValid;
+  }
+
+  Future<bool> resetPinWithRecoveryKey({
+    required String recoveryKey,
+    required String newPin,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final isValidKey = await _vaultService.verifyRecoveryCode(recoveryKey);
+      if (!isValidKey) {
+        _errorMessage = 'Invalid Recovery Key';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      await _vaultService.resetPinWithRecoveryCode(newPin: newPin);
+      _activePin = newPin;
+      _isUnlocked = true;
+      _isConfigured = true;
+      _recoveryCode = await _vaultService.getRecoveryCode();
+      await _loadVaultItemsFromPrefs();
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   void lockVault() {
@@ -71,12 +106,11 @@ class VaultController extends ChangeNotifier {
   }
 
   Future<void> hideVideo(VideoModel video) async {
-    if (!_isUnlocked || _activePin.isEmpty) return;
     _isLoading = true;
     notifyListeners();
 
     try {
-      final vaultItem = await _vaultService.hideVideo(video, _activePin);
+      final vaultItem = await _vaultService.hideVideo(video);
       _vaultItems.add(vaultItem);
       await _saveVaultItemsToPrefs();
     } finally {
@@ -85,13 +119,26 @@ class VaultController extends ChangeNotifier {
     }
   }
 
-  Future<void> unhideVideo(VaultItemModel item) async {
-    if (!_isUnlocked || _activePin.isEmpty) return;
+  Future<void> hideMusic(MusicModel song) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _vaultService.unhideVideo(item, _activePin);
+      final vaultItem = await _vaultService.hideMusic(song);
+      _vaultItems.add(vaultItem);
+      await _saveVaultItemsToPrefs();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> unhideItem(VaultItemModel item) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _vaultService.unhideItem(item);
       _vaultItems.removeWhere((v) => v.id == item.id);
       await _saveVaultItemsToPrefs();
     } finally {
