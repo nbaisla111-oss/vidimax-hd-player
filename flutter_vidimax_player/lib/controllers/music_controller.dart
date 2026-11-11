@@ -36,10 +36,13 @@ class MusicController extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   String? get selectedFolder => _selectedFolder;
   int get sortOption => _sortOption;
+  List<MusicModel> get playlist => _playlist.isNotEmpty ? _playlist : _allSongs;
+  int get currentIndex => _currentIndex;
 
   MusicModel? get currentSong {
-    if (_currentIndex >= 0 && _currentIndex < _playlist.length) {
-      return _playlist[_currentIndex];
+    final list = playlist;
+    if (_currentIndex >= 0 && _currentIndex < list.length) {
+      return list[_currentIndex];
     }
     return null;
   }

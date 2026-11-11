@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../controllers/music_controller.dart';
 import '../../models/music_model.dart';
 import '../../utils/app_theme.dart';
+import 'music_queue_bottom_sheet.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   const NowPlayingScreen({super.key});
@@ -121,14 +122,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 22),
-                      onPressed: () {
-                        if (!song.path.startsWith('http')) {
-                          Share.shareXFiles([XFile(song.path)], text: 'Listening to ${song.title}');
-                        }
-                      },
-                      tooltip: 'Share Track',
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 24),
+                          onPressed: () => MusicQueueBottomSheet.show(context),
+                          tooltip: 'Playing Queue',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 22),
+                          onPressed: () {
+                            if (!song.path.startsWith('http')) {
+                              Share.shareXFiles([XFile(song.path)], text: 'Listening to ${song.title}');
+                            }
+                          },
+                          tooltip: 'Share Track',
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -368,6 +379,38 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       tooltip: 'Repeat Mode',
                     ),
                   ],
+                ),
+                const SizedBox(height: 14),
+
+                // Quick Queue Opener Pill Button
+                InkWell(
+                  onTap: () => MusicQueueBottomSheet.show(context),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.secondaryCyan.withOpacity(0.35)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.queue_music_rounded, size: 18, color: AppTheme.secondaryCyan),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Queue (${musicCtrl.playlist.length} Songs)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppTheme.secondaryCyan),
+                      ],
+                    ),
+                  ),
                 ),
                 const Spacer(flex: 1),
               ],

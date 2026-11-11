@@ -6,14 +6,6 @@ import 'package:video_player/video_player.dart';
 import '../../models/video_model.dart';
 import '../../utils/app_theme.dart';
 
-enum VideoAspectMode {
-  contain, // Default fit
-  cover,   // Full screen zoom / crop (No black bars!)
-  fill,    // Stretch 100%
-  sixteenNine, // 16:9 cinema
-  fourThree,   // 4:3 standard
-}
-
 class CustomVideoPlayerScreen extends StatefulWidget {
   final VideoModel video;
   final List<VideoModel>? playlist;
@@ -50,7 +42,6 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
   double _volume = 1.0;
   double _brightness = 0.65; // Initial screen brightness (65%)
   double _playbackSpeed = 1.0;
-  VideoAspectMode _aspectMode = VideoAspectMode.cover; // Default to Cover (Fill screen without ugly black bars)
 
   Timer? _hideControlsTimer;
   Timer? _indicatorTimer;
@@ -60,9 +51,9 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
   bool _showBrightnessIndicator = false;
   bool _showSeekRipple = false;
   bool _seekRippleForward = true;
-  String _aspectToastMessage = 'Zoom to Fill (Full Screen)';
-  bool _showAspectToast = false;
-  Timer? _aspectToastTimer;
+  String _toastMessage = '';
+  bool _showToast = false;
+  Timer? _toastTimer;
 
   @override
   void initState() {
@@ -225,46 +216,16 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
     _startHideTimer();
   }
 
-  void _cycleAspectMode() {
+  void _showToastNotification(String message) {
     setState(() {
-      if (_aspectMode == VideoAspectMode.cover) {
-        _aspectMode = VideoAspectMode.contain;
-        _aspectToastMessage = 'Fit to Screen (Original Ratio)';
-      } else if (_aspectMode == VideoAspectMode.contain) {
-        _aspectMode = VideoAspectMode.fill;
-        _aspectToastMessage = 'Stretch (100% Edges)';
-      } else if (_aspectMode == VideoAspectMode.fill) {
-        _aspectMode = VideoAspectMode.sixteenNine;
-        _aspectToastMessage = '16:9 Widescreen Cinema';
-      } else if (_aspectMode == VideoAspectMode.sixteenNine) {
-        _aspectMode = VideoAspectMode.fourThree;
-        _aspectToastMessage = '4:3 Standard Frame';
-      } else {
-        _aspectMode = VideoAspectMode.cover;
-        _aspectToastMessage = 'Zoom to Fill (Full Screen)';
-      }
-      _showAspectToast = true;
+      _toastMessage = message;
+      _showToast = true;
     });
 
-    _aspectToastTimer?.cancel();
-    _aspectToastTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _showAspectToast = false);
+    _toastTimer?.cancel();
+    _toastTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => _showToast = false);
     });
-  }
-
-  String _getAspectModeLabel() {
-    switch (_aspectMode) {
-      case VideoAspectMode.cover:
-        return 'Fill Screen';
-      case VideoAspectMode.contain:
-        return 'Fit';
-      case VideoAspectMode.fill:
-        return 'Stretch';
-      case VideoAspectMode.sixteenNine:
-        return '16:9';
-      case VideoAspectMode.fourThree:
-        return '4:3';
-    }
   }
 
   Future<void> _applyHardwareBrightness(double brightness) async {
@@ -378,7 +339,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
     _hideControlsTimer?.cancel();
     _indicatorTimer?.cancel();
     _seekRippleTimer?.cancel();
-    _aspectToastTimer?.cancel();
+    _toastTimer?.cancel();
     _controller.removeListener(_videoListener);
     _controller.dispose();
     _resetHardwareBrightness();
@@ -412,7 +373,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. High-Performance Video Surface with Pinch-to-Zoom & Aspect Modes
+              // 1. Video Surface Playing in Authentic Natural Aspect Ratio
               InteractiveViewer(
                 minScale: 1.0,
                 maxScale: 3.5,
@@ -468,22 +429,28 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
                   ),
                 ),
 
-              // 4. Aspect Ratio Change Toast Notification
-              if (_showAspectToast)
+              // 4. HUD Toast Notification (Auto-Play Toggle, Statuses)
+              if (_showToast)
                 Positioned(
                   top: 70,
                   left: 0,
                   right: 0,
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppTheme.primaryViolet),
+                        color: Colors.black.withOpacity(0.88),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.primaryViolet, width: 1.2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryViolet.withOpacity(0.3),
+                            blurRadius: 12,
+                          ),
+                        ],
                       ),
                       child: Text(
-                        _aspectToastMessage,
+                        _toastMessage,
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),
@@ -653,61 +620,13 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
         ? _controller.value.aspectRatio
         : (16 / 9);
 
-    switch (_aspectMode) {
-      case VideoAspectMode.cover:
-        // Fill 100% of the screen without letterbox black bars
-        return SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.cover,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: hasValidDimensions ? videoSize.width : 1280,
-              height: hasValidDimensions ? videoSize.height : 720,
-              child: VideoPlayer(_controller),
-            ),
-          ),
-        );
-
-      case VideoAspectMode.fill:
-        // Stretch across 100% of viewport
-        return SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.fill,
-            clipBehavior: Clip.hardEdge,
-            child: SizedBox(
-              width: hasValidDimensions ? videoSize.width : 1280,
-              height: hasValidDimensions ? videoSize.height : 720,
-              child: VideoPlayer(_controller),
-            ),
-          ),
-        );
-
-      case VideoAspectMode.sixteenNine:
-        return Center(
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: VideoPlayer(_controller),
-          ),
-        );
-
-      case VideoAspectMode.fourThree:
-        return Center(
-          child: AspectRatio(
-            aspectRatio: 4 / 3,
-            child: VideoPlayer(_controller),
-          ),
-        );
-
-      case VideoAspectMode.contain:
-      default:
-        // Fit original ratio within bounds
-        return Center(
-          child: AspectRatio(
-            aspectRatio: rawAspect,
-            child: VideoPlayer(_controller),
-          ),
-        );
-    }
+    // Natural authentic video aspect ratio without any unwanted cropping, stretching or zoom
+    return Center(
+      child: AspectRatio(
+        aspectRatio: rawAspect,
+        child: VideoPlayer(_controller),
+      ),
+    );
   }
 
   Widget _buildTopBar() {
@@ -747,39 +666,45 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> {
             ),
           ),
 
-          // Auto-Play Toggle Button
-          IconButton(
-            icon: Icon(
-              _autoPlayNext ? Icons.playlist_play_rounded : Icons.playlist_remove_rounded,
-              color: _autoPlayNext ? AppTheme.accentEmerald : Colors.white54,
-              size: 24,
-            ),
-            tooltip: _autoPlayNext ? 'Auto-play Next: ON' : 'Auto-play Next: OFF',
-            onPressed: () {
+          // Auto-Play Next Toggle Button (Tap once -> ON, Tap again -> OFF)
+          InkWell(
+            onTap: () {
               setState(() => _autoPlayNext = !_autoPlayNext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_autoPlayNext ? 'Auto-play Next Video: Enabled' : 'Auto-play Next Video: Disabled'),
-                  duration: const Duration(seconds: 1),
-                ),
+              _showToastNotification(
+                _autoPlayNext ? 'Auto-play Next: ON' : 'Auto-play Next: OFF',
               );
             },
-          ),
-
-          // Aspect Ratio Mode Button
-          InkWell(
-            onTap: _cycleAspectMode,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.primaryViolet),
+                color: _autoPlayNext
+                    ? AppTheme.accentEmerald.withOpacity(0.2)
+                    : Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _autoPlayNext ? AppTheme.accentEmerald : Colors.white24,
+                  width: 1.2,
+                ),
               ),
-              child: Text(
-                _getAspectModeLabel(),
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _autoPlayNext ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    size: 14,
+                    color: _autoPlayNext ? AppTheme.accentEmerald : Colors.white60,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _autoPlayNext ? 'Auto Next: ON' : 'Auto Next: OFF',
+                    style: TextStyle(
+                      color: _autoPlayNext ? AppTheme.accentEmerald : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

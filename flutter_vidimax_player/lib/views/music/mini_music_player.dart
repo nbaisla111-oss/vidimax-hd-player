@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/music_controller.dart';
 import '../../utils/app_theme.dart';
+import 'music_queue_bottom_sheet.dart';
 import 'now_playing_screen.dart';
 
 class MiniMusicPlayer extends StatelessWidget {
@@ -102,20 +103,47 @@ class MiniMusicPlayer extends StatelessWidget {
                       ),
                     ),
 
+                    // Previous Button
+                    IconButton(
+                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white70, size: 24),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Previous Track',
+                      onPressed: () => musicCtrl.playPrevious(),
+                    ),
+                    const SizedBox(width: 4),
+
                     // Play/Pause Button
                     IconButton(
                       icon: Icon(
                         musicCtrl.isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
                         color: AppTheme.primaryViolet,
-                        size: 36,
+                        size: 34,
                       ),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      tooltip: musicCtrl.isPlaying ? 'Pause' : 'Play',
                       onPressed: () => musicCtrl.togglePlayPause(),
                     ),
+                    const SizedBox(width: 4),
 
                     // Next Button
                     IconButton(
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white70, size: 28),
+                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white70, size: 24),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Next Track',
                       onPressed: () => musicCtrl.playNext(),
+                    ),
+                    const SizedBox(width: 6),
+
+                    // Queue List Button
+                    IconButton(
+                      icon: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 22),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Current Playlist Queue',
+                      onPressed: () => MusicQueueBottomSheet.show(context),
                     ),
                   ],
                 ),
