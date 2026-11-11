@@ -306,12 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final video = videoCtrl.videos[index];
-        return _buildVideoCard(video, videoCtrl);
+        return _buildVideoCard(video, videoCtrl, index);
       },
     );
   }
 
-  Widget _buildVideoCard(VideoModel video, VideoController videoCtrl) {
+  Widget _buildVideoCard(VideoModel video, VideoController videoCtrl, int index) {
     return InkWell(
       onTap: () {
         Navigator.of(context).push(

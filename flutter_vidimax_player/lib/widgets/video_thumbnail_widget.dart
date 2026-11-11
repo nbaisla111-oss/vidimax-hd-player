@@ -60,8 +60,8 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       () => VideoThumbnail.thumbnailData(
         video: widget.videoPath,
         imageFormat: ImageFormat.JPEG,
-        maxHeight: 140,
-        quality: 65,
+        maxHeight: 360,
+        quality: 85,
       ),
     );
 

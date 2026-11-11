@@ -8,6 +8,7 @@ import '../../models/status_item_model.dart';
 import '../../models/video_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/video_thumbnail_widget.dart';
+import '../player/custom_video_player_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -912,11 +913,39 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
     );
   }
 
+  void _playStatusVideo(StatusItemModel status) {
+    final videoModel = VideoModel(
+      id: status.id,
+      title: status.title,
+      path: status.path,
+      folderName: status.source == StatusAppSource.whatsappBusiness
+          ? 'WhatsApp Business Status'
+          : 'WhatsApp Status',
+      durationMs: 30000,
+      sizeBytes: status.size,
+      dateModified: status.modifiedDate.millisecondsSinceEpoch,
+      resolution: 'Status Video HD',
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomVideoPlayerScreen(video: videoModel),
+      ),
+    );
+  }
+
   Widget _buildStatusItemCard(StatusItemModel status, ToolsController toolsCtrl) {
     final isVideo = status.mediaType == StatusMediaType.video;
 
     return GestureDetector(
-      onTap: () => _showStatusPreviewDialog(status, toolsCtrl),
+      onTap: () {
+        if (isVideo) {
+          _playStatusVideo(status);
+        } else {
+          _showStatusPreviewDialog(status, toolsCtrl);
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           color: AppTheme.cardDark,
@@ -945,18 +974,39 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 ),
               ),
 
-            // Video indicator badge
+            // Video center play badge
+            if (isVideo)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30, width: 1.5),
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                ),
+              ),
+
+            // Video indicator badge at top-left
             if (isVideo)
               Positioned(
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.65),
+                    color: Colors.black.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.videocam_rounded, color: AppTheme.secondaryCyan, size: 14),
+                      SizedBox(width: 4),
+                      Text('VIDEO', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ),
 
@@ -1032,24 +1082,62 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     maxHeight: MediaQuery.of(context).size.height * 0.7,
                     maxWidth: double.infinity,
                   ),
-                  child: isVideo
-                      ? AspectRatio(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (isVideo)
+                        AspectRatio(
                           aspectRatio: 9 / 16,
                           child: VideoThumbnailWidget(
                             videoPath: status.path,
                             fit: BoxFit.contain,
                           ),
                         )
-                      : Image.file(
+                      else
+                        Image.file(
                           File(status.path),
                           fit: BoxFit.contain,
                         ),
+                      if (isVideo)
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _playStatusVideo(status);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryViolet.withOpacity(0.85),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (isVideo) ...[
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                      label: const Text('Play Video'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryViolet,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _playStatusVideo(status);
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   ElevatedButton.icon(
                     icon: Icon(
                       status.isSaved ? Icons.check_circle_rounded : Icons.download_rounded,
@@ -1059,7 +1147,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.accentEmerald,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: () async {
@@ -1072,14 +1160,14 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                       }
                     },
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.share_rounded, size: 20),
                     label: const Text('Share'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Colors.white38),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: () {

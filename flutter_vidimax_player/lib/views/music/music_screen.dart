@@ -311,7 +311,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMutedDark, size: 20),
               color: AppTheme.surfaceDark,
-              onSelected: (val) {
+              onSelected: (val) async {
                 if (val == 'play') {
                   musicCtrl.playSong(song, queue: currentQueue);
                 } else if (val == 'share') {

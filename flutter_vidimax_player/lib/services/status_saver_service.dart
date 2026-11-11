@@ -60,23 +60,45 @@ class StatusSaverService {
               final filePath = entity.path;
               if (uniquePaths.contains(filePath)) continue;
 
+              final fileName = p.basename(filePath);
+              final lowerName = fileName.toLowerCase();
+
+              // Skip WhatsApp internal hidden files, .nomedia, and .thumb cache stubs
+              if (fileName.startsWith('.') || 
+                  lowerName.contains('.thumb') || 
+                  lowerName.endsWith('.nomedia')) {
+                continue;
+              }
+
               final ext = p.extension(filePath).toLowerCase();
               final isVideo = ['.mp4', '.3gp', '.mkv'].contains(ext);
               final isImage = ['.jpg', '.jpeg', '.png'].contains(ext);
 
               if (isVideo || isImage) {
-                uniquePaths.add(filePath);
                 final stat = entity.statSync();
+
+                // Filter out WhatsApp low-resolution thumbnail blur cache files:
+                // WhatsApp saves tiny 1KB-12KB blurry preview thumbnails in .Statuses cache.
+                // Genuine high-quality status images are > 15KB.
+                if (isImage && stat.size < 15 * 1024) {
+                  continue;
+                }
+                // Genuine status video clips are > 50KB.
+                if (isVideo && stat.size < 50 * 1024) {
+                  continue;
+                }
+
+                uniquePaths.add(filePath);
                 
                 // चेक करें कि क्या यह स्टेटस पहले से VidiMax गैलरी में सेव है या नहीं
                 final savedDir = Directory('/storage/emulated/0/Pictures/VidiMax_Status');
-                final savedFile = File(p.join(savedDir.path, p.basename(filePath)));
+                final savedFile = File(p.join(savedDir.path, fileName));
                 final isSaved = await savedFile.exists();
 
                 list.add(
                   StatusItemModel(
                     id: filePath.hashCode.toString(),
-                    title: p.basename(filePath),
+                    title: fileName,
                     path: filePath,
                     file: entity,
                     mediaType: isVideo ? StatusMediaType.video : StatusMediaType.image,
