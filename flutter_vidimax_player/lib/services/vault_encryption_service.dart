@@ -12,10 +12,25 @@ import '../models/video_model.dart';
 class VaultEncryptionService {
   static const String _pinKey = 'vidimax_vault_pin_hash';
   static const String _recoveryKey = 'vidimax_vault_recovery_code';
+  static const String _securityQuestionKey = 'vidimax_vault_security_question';
+  static const String _securityAnswerHashKey = 'vidimax_vault_security_answer_hash';
 
-  /// Hash a 4-digit PIN with SHA-256
+  static const List<String> defaultSecurityQuestions = [
+    'What was your first school?',
+    "What is your pet's name?",
+    'What is your favorite food?',
+    'In which city were you born?',
+    'What is your favorite movie?',
+  ];
+
+  /// Hash an input string with SHA-256
   String _hash(String input) {
     return sha256.convert(utf8.encode(input)).toString();
+  }
+
+  /// Normalize (trim + lowercase) and SHA-256 hash a security answer
+  String _hashAnswer(String answer) {
+    return _hash(answer.trim().toLowerCase());
   }
 
   /// Check if Vault PIN is configured
@@ -24,22 +39,61 @@ class VaultEncryptionService {
     return prefs.containsKey(_pinKey);
   }
 
-  /// Setup Vault PIN without questions, generating an emergency 6-digit recovery key
+  /// Setup Vault PIN along with security question and hashed answer
   Future<String> setupPin({
     required String pin,
+    required String securityQuestion,
+    required String securityAnswer,
     String? customRecoveryCode,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_pinKey, _hash(pin));
+    await prefs.setString(_securityQuestionKey, securityQuestion.trim());
+    await prefs.setString(_securityAnswerHashKey, _hashAnswer(securityAnswer));
 
     String recoveryCode = customRecoveryCode ?? prefs.getString(_recoveryKey) ?? '';
     if (recoveryCode.isEmpty) {
-      // Generate 6-digit emergency key
       final randomNum = (100000 + Random().nextInt(900000)).toString();
       recoveryCode = randomNum;
       await prefs.setString(_recoveryKey, recoveryCode);
     }
     return recoveryCode;
+  }
+
+  /// Fetch saved security question
+  Future<String?> getSecurityQuestion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final question = prefs.getString(_securityQuestionKey);
+    if (question == null || question.trim().isEmpty) return null;
+    return question;
+  }
+
+  /// Check if security question & answer are saved
+  Future<bool> hasSecurityQuestion() async {
+    final prefs = await SharedPreferences.getInstance();
+    final q = prefs.getString(_securityQuestionKey);
+    final a = prefs.getString(_securityAnswerHashKey);
+    return q != null && q.trim().isNotEmpty && a != null && a.isNotEmpty;
+  }
+
+  /// Verify security answer (case-insensitive & trimmed) against stored SHA-256 hash
+  Future<bool> verifySecurityAnswer(String enteredAnswer) async {
+    final trimmed = enteredAnswer.trim();
+    if (trimmed.isEmpty) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final storedHash = prefs.getString(_securityAnswerHashKey);
+    if (storedHash == null || storedHash.isEmpty) return false;
+    return storedHash == _hashAnswer(trimmed);
+  }
+
+  /// Update security question and hashed answer from unlocked Vault settings
+  Future<void> updateSecurityQuestion({
+    required String question,
+    required String answer,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_securityQuestionKey, question.trim());
+    await prefs.setString(_securityAnswerHashKey, _hashAnswer(answer));
   }
 
   /// Verify entered 4-digit PIN
@@ -50,28 +104,35 @@ class VaultEncryptionService {
     return storedHash == _hash(enteredPin);
   }
 
-  /// Get current recovery code to display to the owner
+  /// Get current recovery code
   Future<String> getRecoveryCode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_recoveryKey) ?? '888888';
   }
 
-  /// Verify 6-digit Recovery Code or master rescue code
+  /// Verify 6-digit Recovery Code (fallback if legacy setup had no security question)
   Future<bool> verifyRecoveryCode(String enteredCode) async {
     final cleanCode = enteredCode.trim();
-    if (cleanCode == '888888') return true; // Universal master recovery code
+    if (cleanCode == '888888') return true;
     final prefs = await SharedPreferences.getInstance();
     final storedCode = prefs.getString(_recoveryKey);
     if (storedCode != null && storedCode.trim() == cleanCode) return true;
     return false;
   }
 
-  /// Reset PIN using verified recovery code (preserves 100% of hidden files)
-  Future<void> resetPinWithRecoveryCode({
+  /// Reset ONLY the PIN authentication hash (preserves 100% of hidden video/audio files)
+  Future<void> resetPin({
     required String newPin,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_pinKey, _hash(newPin));
+  }
+
+  /// Legacy alias kept for compatibility
+  Future<void> resetPinWithRecoveryCode({
+    required String newPin,
+  }) async {
+    await resetPin(newPin: newPin);
   }
 
   /// Get the private vault directory in app internal storage (hidden from external gallery/scanners)

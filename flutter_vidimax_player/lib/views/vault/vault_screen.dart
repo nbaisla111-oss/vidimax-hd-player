@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/music_controller.dart';
 import '../../controllers/vault_controller.dart';
 import '../../controllers/video_controller.dart';
 import '../../models/vault_item_model.dart';
 import '../../models/video_model.dart';
+import '../../services/vault_encryption_service.dart';
 import '../../utils/app_theme.dart';
 import '../player/custom_video_player_screen.dart';
 import '../../widgets/video_thumbnail_widget.dart';
+import 'vault_recovery_screen.dart';
 
 class VaultScreen extends StatefulWidget {
   final bool embedded;
@@ -20,8 +21,11 @@ class VaultScreen extends StatefulWidget {
 
 class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStateMixin {
   String _enteredPin = '';
-  String _setupStep = 'initial'; // 'initial' or 'confirm'
+  String _setupStep = 'initial'; // 'initial', 'confirm', 'security_question'
   String _firstEnteredPin = '';
+  String _selectedQuestion = VaultEncryptionService.defaultSecurityQuestions.first;
+  final TextEditingController _securityAnswerCtrl = TextEditingController();
+  String? _setupAnswerError;
   TabController? _tabController;
 
   @override
@@ -33,6 +37,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _tabController?.dispose();
+    _securityAnswerCtrl.dispose();
     super.dispose();
   }
 
@@ -68,25 +73,52 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
         });
       } else if (_setupStep == 'confirm') {
         if (_enteredPin == _firstEnteredPin) {
-          await vaultCtrl.setupNewPin(pin: _firstEnteredPin);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Vault setup complete! Recovery Key: ${vaultCtrl.recoveryCode}'),
-                duration: const Duration(seconds: 4),
-              ),
-            );
-          }
+          setState(() {
+            _setupStep = 'security_question';
+            _enteredPin = '';
+            _setupAnswerError = null;
+          });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('PIN does not match. Try again.')),
           );
           setState(() {
             _setupStep = 'initial';
+            _firstEnteredPin = '';
             _enteredPin = '';
           });
         }
       }
+    }
+  }
+
+  Future<void> _completeSecurityQuestionSetup(VaultController vaultCtrl) async {
+    final trimmedAnswer = _securityAnswerCtrl.text.trim();
+    if (trimmedAnswer.isEmpty) {
+      setState(() => _setupAnswerError = 'Please enter an answer for your security question.');
+      return;
+    }
+
+    await vaultCtrl.setupNewPin(
+      pin: _firstEnteredPin,
+      securityQuestion: _selectedQuestion,
+      securityAnswer: trimmedAnswer,
+    );
+
+    if (mounted) {
+      _securityAnswerCtrl.clear();
+      setState(() {
+        _setupStep = 'initial';
+        _firstEnteredPin = '';
+        _enteredPin = '';
+        _setupAnswerError = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vault PIN & Security Question saved! Vault unlocked.'),
+          backgroundColor: AppTheme.accentEmerald,
+        ),
+      );
     }
   }
 
@@ -98,7 +130,198 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
       return _buildUnlockedVault(vaultCtrl);
     }
 
+    if (!vaultCtrl.isConfigured && _setupStep == 'security_question') {
+      return _buildSecurityQuestionSetupView(vaultCtrl);
+    }
+
     return _buildPinLockView(vaultCtrl);
+  }
+
+  Widget _buildSecurityQuestionSetupView(VaultController vaultCtrl) {
+    return Scaffold(
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: const Text('Security Question Setup', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryViolet.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.security_rounded, size: 42, color: AppTheme.primaryViolet),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Set Security Question',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary(context),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Choose a security question so you can reset your PIN anytime without losing your hidden files.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Select Security Question',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedQuestion,
+                isExpanded: true,
+                dropdownColor: AppTheme.surface(context),
+                style: TextStyle(
+                  color: AppTheme.textPrimary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppTheme.card(context),
+                  prefixIcon: const Icon(Icons.quiz_outlined, color: AppTheme.primaryViolet),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border(context)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                  ),
+                ),
+                items: VaultEncryptionService.defaultSecurityQuestions
+                    .map(
+                      (q) => DropdownMenuItem<String>(
+                        value: q,
+                        child: Text(q, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedQuestion = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Your Answer',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textSecondary(context),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _securityAnswerCtrl,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _completeSecurityQuestionSetup(vaultCtrl),
+                onChanged: (_) {
+                  if (_setupAnswerError != null) {
+                    setState(() => _setupAnswerError = null);
+                  }
+                },
+                style: TextStyle(
+                  color: AppTheme.textPrimary(context),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Enter your secret answer...',
+                  hintStyle: TextStyle(color: AppTheme.textMuted(context)),
+                  prefixIcon: const Icon(Icons.edit_note_rounded, color: AppTheme.secondaryCyan),
+                  filled: true,
+                  fillColor: AppTheme.card(context),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border(context)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: AppTheme.border(context)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                  ),
+                ),
+              ),
+              if (_setupAnswerError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _setupAnswerError!,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryViolet,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  icon: const Icon(Icons.check_circle_outline_rounded),
+                  label: const Text(
+                    'Complete Setup & Open Vault',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: vaultCtrl.isLoading ? null : () => _completeSecurityQuestionSetup(vaultCtrl),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _setupStep = 'initial';
+                    _firstEnteredPin = '';
+                    _enteredPin = '';
+                    _setupAnswerError = null;
+                  });
+                },
+                child: Text(
+                  'Change PIN Instead',
+                  style: TextStyle(color: AppTheme.textMuted(context), fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildPinLockView(VaultController vaultCtrl) {
@@ -108,10 +331,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
     if (!vaultCtrl.isConfigured) {
       if (_setupStep == 'initial') {
         headerTitle = 'Create Vault PIN';
-        headerSubtitle = 'Choose a secure 4-digit PIN';
+        headerSubtitle = 'Step 1 of 2: Choose a secure 4-digit PIN';
       } else if (_setupStep == 'confirm') {
         headerTitle = 'Confirm PIN';
-        headerSubtitle = 'Re-enter your 4-digit PIN';
+        headerSubtitle = 'Step 1 of 2: Re-enter your 4-digit PIN';
       }
     }
 
@@ -182,21 +405,34 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                     style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ],
-                const SizedBox(height: 26),
-                // Numeric Keypad
-                _buildKeypad(),
-                const SizedBox(height: 18),
-
-                // Forgot PIN Option
-                if (vaultCtrl.isConfigured)
+                // Clearly visible Forgot PIN? button right below the 4-digit PIN input field
+                if (vaultCtrl.isConfigured) ...[
+                  const SizedBox(height: 10),
                   TextButton.icon(
                     icon: const Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.secondaryCyan),
                     label: const Text(
-                      'Forgot PIN? Reset without data loss',
-                      style: TextStyle(color: AppTheme.secondaryCyan, fontWeight: FontWeight.w600, fontSize: 13),
+                      'Forgot PIN?',
+                      style: TextStyle(
+                        color: AppTheme.secondaryCyan,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
-                    onPressed: () => _showForgotPinDialog(context, vaultCtrl),
+                    onPressed: () {
+                      setState(() => _enteredPin = '');
+                      vaultCtrl.clearError();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const VaultRecoveryScreen(),
+                        ),
+                      );
+                    },
                   ),
+                ] else
+                  const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                // Numeric Keypad
+                _buildKeypad(),
               ],
             ),
           ),
@@ -280,9 +516,9 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               title: const Text('Secret Vault', style: TextStyle(fontWeight: FontWeight.bold)),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.vpn_key_rounded, color: AppTheme.secondaryCyan),
-                  tooltip: 'View Master Recovery Key',
-                  onPressed: () => _showRecoveryKeyModal(context, vaultCtrl),
+                  icon: const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan),
+                  tooltip: 'Security Question Settings',
+                  onPressed: () => _showSecuritySettingsDialog(context, vaultCtrl),
                 ),
                 IconButton(
                   icon: const Icon(Icons.lock_rounded, color: Colors.amber),
@@ -330,9 +566,9 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: const Icon(Icons.vpn_key_rounded, color: AppTheme.secondaryCyan, size: 20),
-                          tooltip: 'Recovery Key',
-                          onPressed: () => _showRecoveryKeyModal(context, vaultCtrl),
+                          icon: const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan, size: 20),
+                          tooltip: 'Security Question Settings',
+                          onPressed: () => _showSecuritySettingsDialog(context, vaultCtrl),
                         ),
                         TextButton.icon(
                           icon: const Icon(Icons.lock_rounded, color: Colors.amber, size: 18),
@@ -733,10 +969,13 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
     );
   }
 
-  void _showForgotPinDialog(BuildContext context, VaultController vaultCtrl) {
-    final codeCtrl = TextEditingController();
-    final newPinCtrl = TextEditingController();
-    bool isKeyVerified = false;
+  void _showSecuritySettingsDialog(BuildContext context, VaultController vaultCtrl) {
+    String selectedQuestion = vaultCtrl.securityQuestion != null &&
+            VaultEncryptionService.defaultSecurityQuestions.contains(vaultCtrl.securityQuestion)
+        ? vaultCtrl.securityQuestion!
+        : VaultEncryptionService.defaultSecurityQuestions.first;
+    final answerCtrl = TextEditingController();
+    String? errorMsg;
 
     showDialog(
       context: context,
@@ -748,70 +987,95 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(
                 children: [
-                  const Icon(Icons.lock_reset_rounded, color: AppTheme.secondaryCyan),
+                  const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan),
                   const SizedBox(width: 10),
-                  Text(
-                    'Reset Vault PIN',
-                    style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 17, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Security Question',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'All your hidden videos & audios will remain 100% safe and will NOT be deleted.',
-                    style: TextStyle(color: AppTheme.accentEmerald, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 14),
-                  if (!isKeyVerified) ...[
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (vaultCtrl.hasSecurityQuestion && vaultCtrl.securityQuestion != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentEmerald.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.accentEmerald.withOpacity(0.35)),
+                        ),
+                        child: Text(
+                          'Current question:\n${vaultCtrl.securityQuestion}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textPrimary(context),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     Text(
-                      'Enter your 6-digit Master Recovery Key (or emergency master rescue code 888888):',
-                      style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 12),
+                      'Update Security Question & Answer:',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary(context),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: selectedQuestion,
+                      isExpanded: true,
+                      dropdownColor: AppTheme.surface(context),
+                      style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 13),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      items: VaultEncryptionService.defaultSecurityQuestions
+                          .map(
+                            (q) => DropdownMenuItem<String>(
+                              value: q,
+                              child: Text(q, overflow: TextOverflow.ellipsis),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedQuestion = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
-                      controller: codeCtrl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary(context),
-                        letterSpacing: 4,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      controller: answerCtrl,
+                      style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: '6-digit key',
-                        hintStyle: TextStyle(color: AppTheme.textMuted(context), letterSpacing: 1),
+                        hintText: 'Enter new answer...',
+                        hintStyle: TextStyle(color: AppTheme.textMuted(context)),
                         border: const OutlineInputBorder(),
-                        counterText: '',
                       ),
                     ),
-                  ] else ...[
-                    const Text(
-                      'Master Key Verified! Enter new 4-digit PIN:',
-                      style: TextStyle(color: AppTheme.secondaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: newPinCtrl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 4,
-                      obscureText: true,
-                      style: TextStyle(
-                        color: AppTheme.textPrimary(context),
-                        letterSpacing: 8,
-                        fontWeight: FontWeight.bold,
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMsg!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 12),
                       ),
-                      decoration: InputDecoration(
-                        hintText: 'New PIN',
-                        hintStyle: TextStyle(color: AppTheme.textMuted(context), letterSpacing: 1),
-                        border: const OutlineInputBorder(),
-                        counterText: '',
-                      ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -823,118 +1087,28 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                     backgroundColor: AppTheme.primaryViolet,
                     foregroundColor: Colors.white,
                   ),
-                  child: Text(isKeyVerified ? 'Confirm New PIN' : 'Verify Key'),
+                  child: const Text('Save'),
                   onPressed: () async {
-                    if (!isKeyVerified) {
-                      final input = codeCtrl.text.trim();
-                      if (input == '888888' || input == vaultCtrl.recoveryCode) {
-                        setDialogState(() => isKeyVerified = true);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Invalid Recovery Key. Try 888888 or your recovery key.')),
-                        );
-                      }
-                    } else {
-                      final newPin = newPinCtrl.text.trim();
-                      if (newPin.length == 4) {
-                        await vaultCtrl.resetPinWithRecoveryKey(
-                          recoveryKey: codeCtrl.text.trim(),
-                          newPin: newPin,
-                        );
-                        if (context.mounted) {
-                          Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('PIN reset successfully! Vault unlocked.')),
-                          );
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter a 4-digit PIN')),
-                        );
-                      }
+                    final ans = answerCtrl.text.trim();
+                    if (ans.isEmpty) {
+                      setDialogState(() => errorMsg = 'Please enter a security answer.');
+                      return;
+                    }
+                    await vaultCtrl.updateSecurityQuestion(
+                      question: selectedQuestion,
+                      answer: ans,
+                    );
+                    if (context.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Security question updated securely!')),
+                      );
                     }
                   },
                 ),
               ],
             );
           },
-        );
-      },
-    );
-  }
-
-  void _showRecoveryKeyModal(BuildContext context, VaultController vaultCtrl) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: AppTheme.surface(ctx),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.vpn_key_rounded, color: AppTheme.secondaryCyan),
-              const SizedBox(width: 10),
-              Text(
-                'Master Recovery Key',
-                style: TextStyle(color: AppTheme.textPrimary(ctx), fontSize: 17, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Save this 6-digit key in a safe place. If you ever forget your PIN, you can use this key to reset it without losing any of your files.',
-                style: TextStyle(color: AppTheme.textSecondary(ctx), fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.card(ctx),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.primaryViolet),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      vaultCtrl.recoveryCode.isNotEmpty ? vaultCtrl.recoveryCode : '888888',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary(ctx),
-                        fontSize: 24,
-                        letterSpacing: 4,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, color: AppTheme.secondaryCyan, size: 20),
-                      tooltip: 'Copy Key',
-                      onPressed: () {
-                        Clipboard.setData(
-                          ClipboardData(text: vaultCtrl.recoveryCode.isNotEmpty ? vaultCtrl.recoveryCode : '888888'),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Recovery Key copied to clipboard!')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryViolet,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Got it'),
-              onPressed: () => Navigator.pop(ctx),
-            ),
-          ],
         );
       },
     );
