@@ -299,6 +299,9 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                           decoration: InputDecoration(
                             hintText: 'Type your answer here...',
                             hintStyle: TextStyle(color: AppTheme.textMuted(context)),
+                            helperText: 'Capital or small letters both work as long as spelling matches',
+                            helperStyle: TextStyle(color: AppTheme.textMuted(context), fontSize: 11.5),
+                            helperMaxLines: 2,
                             prefixIcon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryViolet),
                             filled: true,
                             fillColor: AppTheme.card(context),

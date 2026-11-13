@@ -257,6 +257,9 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 decoration: InputDecoration(
                   hintText: 'Enter your secret answer...',
                   hintStyle: TextStyle(color: AppTheme.textMuted(context)),
+                  helperText: 'Spelling matters, not capital/small letters (e.g. "Rocky" = "rocky")',
+                  helperStyle: TextStyle(color: AppTheme.textMuted(context), fontSize: 11.5),
+                  helperMaxLines: 2,
                   prefixIcon: const Icon(Icons.edit_note_rounded, color: AppTheme.secondaryCyan),
                   filled: true,
                   fillColor: AppTheme.card(context),

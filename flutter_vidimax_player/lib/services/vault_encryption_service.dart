@@ -28,9 +28,11 @@ class VaultEncryptionService {
     return sha256.convert(utf8.encode(input)).toString();
   }
 
-  /// Normalize (trim + lowercase) and SHA-256 hash a security answer
+  /// Normalize (trim, collapse extra spaces, and lowercase) and SHA-256 hash a security answer
+  /// Ensures any capitalization (e.g. "Rocky", "rocky", "ROCKY") is accepted as long as spelling matches
   String _hashAnswer(String answer) {
-    return _hash(answer.trim().toLowerCase());
+    final normalized = answer.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+    return _hash(normalized);
   }
 
   /// Check if Vault PIN is configured
