@@ -4,11 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../controllers/tools_controller.dart';
 import '../../controllers/video_controller.dart';
-import '../../models/status_item_model.dart';
 import '../../models/video_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/video_thumbnail_widget.dart';
-import '../player/custom_video_player_screen.dart';
+import '../vault/vault_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -26,9 +25,6 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ToolsController>(context, listen: false).loadStatuses();
-    });
   }
 
   @override
@@ -46,10 +42,10 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
           controller: _tabController,
           indicatorColor: AppTheme.primaryViolet,
           labelColor: AppTheme.primaryViolet,
-          unselectedLabelColor: AppTheme.textMutedDark,
+          unselectedLabelColor: AppTheme.textSecondary(context),
           tabs: const [
             Tab(icon: Icon(Icons.music_note_rounded), text: 'Video to MP3'),
-            Tab(icon: Icon(Icons.download_for_offline_rounded), text: 'Status Saver'),
+            Tab(icon: Icon(Icons.lock_person_rounded), text: 'Secret Vault'),
           ],
         ),
       ),
@@ -57,7 +53,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
         controller: _tabController,
         children: [
           _buildVideoToMp3View(),
-          _buildStatusSaverView(),
+          const VaultScreen(embedded: true),
         ],
       ),
     );
@@ -121,9 +117,13 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             '1. Select Video',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppTheme.textPrimary(context),
+            ),
           ),
           const SizedBox(height: 12),
           if (_selectedVideoForMp3 == null)
@@ -133,18 +133,18 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.cardDark,
+                  color: AppTheme.card(context),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderDark),
+                  border: Border.all(color: AppTheme.border(context)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.video_library_rounded,
                       color: AppTheme.primaryViolet,
                       size: 26,
                     ),
-                    SizedBox(width: 14),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,23 +152,23 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                           Text(
                             'Choose video to extract',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.textPrimary(context),
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'Tap to browse device videos with thumbnails',
                             style: TextStyle(
-                              color: AppTheme.textMutedDark,
+                              color: AppTheme.textMuted(context),
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: AppTheme.textMutedDark),
+                    Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted(context)),
                   ],
                 ),
               ),
@@ -177,7 +177,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.cardDark,
+                color: AppTheme.card(context),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AppTheme.primaryViolet.withOpacity(0.6), width: 1.5),
                 boxShadow: [
@@ -210,8 +210,8 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                           _selectedVideoForMp3!.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -222,7 +222,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryViolet.withOpacity(0.2),
+                                color: AppTheme.primaryViolet.withOpacity(0.16),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -237,17 +237,17 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                             const SizedBox(width: 8),
                             Text(
                               _selectedVideoForMp3!.formattedSize,
-                              style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+                              style: TextStyle(color: AppTheme.textMuted(context), fontSize: 11),
                             ),
                             const SizedBox(width: 6),
-                            const Text('•', style: TextStyle(color: AppTheme.textMutedDark, fontSize: 10)),
+                            Text('•', style: TextStyle(color: AppTheme.textMuted(context), fontSize: 10)),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 _selectedVideoForMp3!.folderName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+                                style: TextStyle(color: AppTheme.textMuted(context), fontSize: 11),
                               ),
                             ),
                           ],
@@ -262,9 +262,9 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
+                        color: AppTheme.surface(context),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.borderDark),
+                        border: Border.all(color: AppTheme.border(context)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
@@ -287,9 +287,13 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
               ),
             ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             '2. Select Audio Bitrate Quality',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppTheme.textPrimary(context),
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -304,10 +308,10 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSel ? AppTheme.primaryViolet.withOpacity(0.2) : AppTheme.cardDark,
+                        color: isSel ? AppTheme.primaryViolet.withOpacity(0.18) : AppTheme.card(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSel ? AppTheme.primaryViolet : AppTheme.borderDark,
+                          color: isSel ? AppTheme.primaryViolet : AppTheme.border(context),
                         ),
                       ),
                       child: Column(
@@ -315,14 +319,14 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                           Text(
                             '$bitrate kbps',
                             style: TextStyle(
-                              color: isSel ? AppTheme.primaryViolet : Colors.white,
+                              color: isSel ? AppTheme.primaryViolet : AppTheme.textPrimary(context),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             bitrate == 320 ? 'HD Studio' : (bitrate == 192 ? 'Standard' : 'Compact'),
-                            style: const TextStyle(fontSize: 10, color: AppTheme.textMutedDark),
+                            style: TextStyle(fontSize: 10, color: AppTheme.textMuted(context)),
                           ),
                         ],
                       ),
@@ -337,13 +341,13 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             LinearProgressIndicator(
               value: toolsCtrl.conversionProgress,
               color: AppTheme.primaryViolet,
-              backgroundColor: AppTheme.borderDark,
+              backgroundColor: AppTheme.border(context),
             ),
             const SizedBox(height: 8),
             Center(
               child: Text(
                 'Extracting audio... ${(toolsCtrl.conversionProgress * 100).toInt()}%',
-                style: const TextStyle(color: AppTheme.textSecondaryDark, fontSize: 12),
+                style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 12),
               ),
             ),
           ] else ...[
@@ -368,7 +372,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                         );
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Audio extracted and saved to /Music/VidiMax/')),
+                            const SnackBar(content: Text('Audio extracted and saved to /Music/RoxPlayer/')),
                           );
                         }
                       },
@@ -388,6 +392,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
     final file = toolsCtrl.lastExtractedAudio;
     if (file == null) return const SizedBox.shrink();
 
+    final isDark = AppTheme.isDark(context);
     final fileName = file.path.split(Platform.pathSeparator).last;
     final position = toolsCtrl.audioPosition;
     final duration = toolsCtrl.audioDuration;
@@ -405,10 +410,9 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            AppTheme.cardDark,
-            const Color(0xFF1E1B4B).withOpacity(0.6),
-          ],
+          colors: isDark
+              ? [AppTheme.cardDark, const Color(0xFF1E1B4B).withOpacity(0.6)]
+              : [Colors.white, const Color(0xFFF3E8FF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -436,11 +440,11 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 child: const Icon(Icons.check_circle_rounded, color: AppTheme.accentEmerald, size: 20),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Extracted Audio Ready',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.textPrimary(context),
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -450,7 +454,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 icon: const Icon(Icons.share_rounded, color: AppTheme.secondaryCyan, size: 22),
                 tooltip: 'Share Audio',
                 onPressed: () {
-                  Share.shareXFiles([XFile(file.path)], text: 'Extracted with VidiMax HD Player');
+                  Share.shareXFiles([XFile(file.path)], text: 'Extracted with Rox Player');
                 },
               ),
             ],
@@ -460,23 +464,20 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             fileName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.textPrimary(context),
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Saved in /Music/VidiMax/ • MP3 Audio',
-            style: TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+          Text(
+            'Saved in /Music/RoxPlayer/ • MP3 Audio',
+            style: TextStyle(color: AppTheme.textMuted(context), fontSize: 11),
           ),
           const SizedBox(height: 14),
-
-          // Audio Player Controls & Slider
           Row(
             children: [
-              // Play / Pause Button
               GestureDetector(
                 onTap: () => toolsCtrl.togglePlayExtractedAudio(),
                 child: Container(
@@ -507,16 +508,14 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Progress Bar & Timestamps
               Expanded(
                 child: Column(
                   children: [
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         activeTrackColor: AppTheme.primaryViolet,
-                        inactiveTrackColor: Colors.white12,
-                        thumbColor: Colors.white,
+                        inactiveTrackColor: AppTheme.border(context),
+                        thumbColor: AppTheme.primaryViolet,
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                         trackHeight: 3,
                         overlayColor: AppTheme.primaryViolet.withOpacity(0.2),
@@ -537,11 +536,11 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                         children: [
                           Text(
                             formatDuration(position),
-                            style: const TextStyle(color: AppTheme.textSecondaryDark, fontSize: 11),
+                            style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 11),
                           ),
                           Text(
                             duration.inMilliseconds > 0 ? formatDuration(duration) : '--:--',
-                            style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+                            style: TextStyle(color: AppTheme.textMuted(context), fontSize: 11),
                           ),
                         ],
                       ),
@@ -549,10 +548,8 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                   ],
                 ),
               ),
-
-              // Stop Button
               IconButton(
-                icon: const Icon(Icons.stop_rounded, color: AppTheme.textMutedDark, size: 24),
+                icon: Icon(Icons.stop_rounded, color: AppTheme.textMuted(context), size: 24),
                 tooltip: 'Stop',
                 onPressed: () => toolsCtrl.stopAudio(),
               ),
@@ -566,7 +563,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
   void _pickVideoModal(VideoController videoCtrl) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surfaceDark,
+      backgroundColor: AppTheme.surface(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -581,14 +578,13 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             final videos = videoCtrl.videos;
             return Column(
               children: [
-                // Drag handle
                 Center(
                   child: Container(
                     margin: const EdgeInsets.only(top: 12, bottom: 8),
                     width: 44,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: AppTheme.border(ctx),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -601,10 +597,10 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Select Video to Extract',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.textPrimary(ctx),
                               fontWeight: FontWeight.bold,
                               fontSize: 17,
                             ),
@@ -612,35 +608,35 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                           const SizedBox(height: 2),
                           Text(
                             '${videos.length} videos available on device',
-                            style: const TextStyle(
-                              color: AppTheme.textMutedDark,
+                            style: TextStyle(
+                              color: AppTheme.textMuted(ctx),
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                        icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary(ctx)),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: AppTheme.borderDark, height: 1),
+                Divider(color: AppTheme.border(ctx), height: 1),
                 Expanded(
                   child: videos.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             'No videos found on device',
-                            style: TextStyle(color: AppTheme.textMutedDark),
+                            style: TextStyle(color: AppTheme.textMuted(ctx)),
                           ),
                         )
                       : ListView.separated(
                           controller: scrollController,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: videos.length,
-                          separatorBuilder: (_, __) => const Divider(
-                            color: Color(0xFF1E293B),
+                          separatorBuilder: (_, __) => Divider(
+                            color: AppTheme.border(ctx),
                             height: 1,
                             indent: 96,
                           ),
@@ -688,7 +684,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isSelected ? AppTheme.primaryViolet : Colors.white,
+                                  color: isSelected ? AppTheme.primaryViolet : AppTheme.textPrimary(ctx),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
                                 ),
@@ -697,7 +693,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
                                   '${v.formattedSize} • ${v.folderName}',
-                                  style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 11),
+                                  style: TextStyle(color: AppTheme.textMuted(ctx), fontSize: 11),
                                 ),
                               ),
                               trailing: isSelected
@@ -714,471 +710,6 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
               ],
             );
           },
-        );
-      },
-    );
-  }
-
-  Widget _buildStatusSaverView() {
-    final toolsCtrl = Provider.of<ToolsController>(context);
-
-    return Column(
-      children: [
-        // Source Filter: WhatsApp vs WhatsApp Business + Refresh Button
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(
-            children: [
-              _buildSourceChip(
-                label: 'WhatsApp',
-                isSelected: toolsCtrl.selectedSource == StatusAppSource.whatsapp,
-                onTap: () => toolsCtrl.setSelectedStatusSource(StatusAppSource.whatsapp),
-              ),
-              const SizedBox(width: 8),
-              _buildSourceChip(
-                label: 'WhatsApp Business',
-                isSelected: toolsCtrl.selectedSource == StatusAppSource.whatsappBusiness,
-                onTap: () => toolsCtrl.setSelectedStatusSource(StatusAppSource.whatsappBusiness),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryViolet),
-                tooltip: 'Refresh Statuses',
-                onPressed: () => toolsCtrl.loadStatuses(),
-              ),
-            ],
-          ),
-        ),
-
-        // Storage Permission Warning Banner (if Android 11+ manage permission is missing)
-        if (!toolsCtrl.hasManagePermission)
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF7C3AED).withOpacity(0.2),
-                  const Color(0xFFF59E0B).withOpacity(0.15),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.lock_open_rounded, color: Color(0xFFF59E0B), size: 24),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Storage Permission Required',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Allow All Files Access to view hidden WhatsApp status files',
-                        style: TextStyle(color: AppTheme.textSecondaryDark, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF59E0B),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => toolsCtrl.requestManagePermissionAndReload(),
-                  child: const Text('Allow', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-
-        Expanded(
-          child: toolsCtrl.isLoadingStatuses
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryViolet))
-              : toolsCtrl.statuses.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentEmerald.withOpacity(0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.chat_rounded,
-                                size: 48,
-                                color: AppTheme.accentEmerald,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No WhatsApp Statuses Found',
-                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              '1. Open WhatsApp & view your contacts\' statuses\n2. Statuses are cached automatically\n3. Return here and tap "Refresh"',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, color: AppTheme.textMutedDark, height: 1.5),
-                            ),
-                            const SizedBox(height: 20),
-                            if (!toolsCtrl.hasManagePermission)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: ElevatedButton.icon(
-                                  icon: const Icon(Icons.security_update_good_rounded, size: 18),
-                                  label: const Text('Grant Storage Permission', style: TextStyle(fontWeight: FontWeight.bold)),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primaryViolet,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                  ),
-                                  onPressed: () => toolsCtrl.requestManagePermissionAndReload(),
-                                ),
-                              ),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.refresh_rounded, size: 18),
-                              label: const Text('Refresh Statuses'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppTheme.accentEmerald,
-                                side: const BorderSide(color: AppTheme.accentEmerald),
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              ),
-                              onPressed: () => toolsCtrl.loadStatuses(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.82,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: toolsCtrl.statuses.length,
-                      itemBuilder: (context, index) {
-                        final status = toolsCtrl.statuses[index];
-                        return _buildStatusItemCard(status, toolsCtrl);
-                      },
-                    ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSourceChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accentEmerald : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppTheme.accentEmerald : AppTheme.borderDark,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppTheme.textSecondaryDark,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _playStatusVideo(StatusItemModel status) {
-    final videoModel = VideoModel(
-      id: status.id,
-      title: status.title,
-      path: status.path,
-      folderName: status.source == StatusAppSource.whatsappBusiness
-          ? 'WhatsApp Business Status'
-          : 'WhatsApp Status',
-      durationMs: 30000,
-      sizeBytes: status.size,
-      dateModified: status.modifiedDate.millisecondsSinceEpoch,
-      resolution: 'Status Video HD',
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CustomVideoPlayerScreen(video: videoModel),
-      ),
-    );
-  }
-
-  Widget _buildStatusItemCard(StatusItemModel status, ToolsController toolsCtrl) {
-    final isVideo = status.mediaType == StatusMediaType.video;
-
-    return GestureDetector(
-      onTap: () {
-        if (isVideo) {
-          _playStatusVideo(status);
-        } else {
-          _showStatusPreviewDialog(status, toolsCtrl);
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.cardDark,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderDark),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Media Content (Image or Video Thumbnail)
-            if (isVideo)
-              VideoThumbnailWidget(
-                videoPath: status.path,
-                fit: BoxFit.cover,
-              )
-            else
-              Image.file(
-                File(status.path),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: AppTheme.surfaceDark,
-                  child: const Center(
-                    child: Icon(Icons.broken_image_rounded, color: AppTheme.textMutedDark, size: 36),
-                  ),
-                ),
-              ),
-
-            // Video center play badge
-            if (isVideo)
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30, width: 1.5),
-                  ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                ),
-              ),
-
-            // Video indicator badge at top-left
-            if (isVideo)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.videocam_rounded, color: AppTheme.secondaryCyan, size: 14),
-                      SizedBox(width: 4),
-                      Text('VIDEO', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-              ),
-
-            // Action Buttons at bottom
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.9)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      iconSize: 20,
-                      icon: Icon(
-                        status.isSaved ? Icons.check_circle_rounded : Icons.file_download_rounded,
-                        color: status.isSaved ? AppTheme.accentEmerald : Colors.white,
-                      ),
-                      tooltip: status.isSaved ? 'Saved to Gallery' : 'Save Status',
-                      onPressed: () async {
-                        await toolsCtrl.saveStatus(status);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Saved to Gallery (/Pictures/VidiMax_Status/)'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    IconButton(
-                      iconSize: 20,
-                      icon: const Icon(Icons.share_rounded, color: Colors.white),
-                      tooltip: 'Share',
-                      onPressed: () => toolsCtrl.shareStatus(status),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showStatusPreviewDialog(StatusItemModel status, ToolsController toolsCtrl) {
-    final isVideo = status.mediaType == StatusMediaType.video;
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Container(
-                  color: Colors.black,
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.7,
-                    maxWidth: double.infinity,
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (isVideo)
-                        AspectRatio(
-                          aspectRatio: 9 / 16,
-                          child: VideoThumbnailWidget(
-                            videoPath: status.path,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                      else
-                        Image.file(
-                          File(status.path),
-                          fit: BoxFit.contain,
-                        ),
-                      if (isVideo)
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            _playStatusVideo(status);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryViolet.withOpacity(0.85),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (isVideo) ...[
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                      label: const Text('Play Video'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryViolet,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        _playStatusVideo(status);
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  ElevatedButton.icon(
-                    icon: Icon(
-                      status.isSaved ? Icons.check_circle_rounded : Icons.download_rounded,
-                      size: 20,
-                    ),
-                    label: Text(status.isSaved ? 'Saved' : 'Save to Gallery'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accentEmerald,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: () async {
-                      await toolsCtrl.saveStatus(status);
-                      if (mounted) {
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Saved to Gallery!')),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.share_rounded, size: 20),
-                    label: const Text('Share'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white38),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      toolsCtrl.shareStatus(status);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
         );
       },
     );

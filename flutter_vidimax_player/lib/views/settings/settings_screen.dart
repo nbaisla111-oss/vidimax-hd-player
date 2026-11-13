@@ -177,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(height: 1, indent: 56),
                 const ListTile(
                   leading: Icon(Icons.info_outline_rounded, color: AppTheme.primaryViolet),
-                  title: Text('VidiMax HD Player', style: TextStyle(fontWeight: FontWeight.w600)),
+                  title: Text('Rox Player', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text('Version 1.0.0 (Production Build) · Flutter Clean Architecture'),
                 ),
               ],
@@ -194,11 +194,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
-          color: AppTheme.textMutedDark,
+          color: AppTheme.textMuted(context),
         ),
       ),
     );
@@ -213,7 +213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMutedDark)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary(context))),
       ],
     );
   }
@@ -240,11 +240,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('100% Offline Privacy Guarantee'),
         content: const SingleChildScrollView(
           child: Text(
-            'VidiMax HD Player is built with privacy as the core foundation.\n\n'
-            '• All videos are processed strictly offline on your local Android device.\n'
+            'Rox Player is built with privacy as the core foundation.\n\n'
+            '• All videos and music are processed strictly offline on your local Android device.\n'
             '• Secret Vault files are encrypted using local AES-256 with key derivation from your personal PIN. No files or keys are transmitted to any external server.\n'
             '• Zero telemetry, zero analytics tracking, and zero cloud uploads.\n'
-            '• WhatsApp status viewing and saving operations read directly from local device storage without accessing any account credentials.',
+            '• Status Saver viewing and saving operations read directly from local device storage without accessing any account credentials.',
             style: TextStyle(fontSize: 13, height: 1.5),
           ),
         ),

@@ -8,20 +8,20 @@ class StatusSaverService {
   factory StatusSaverService() => _instance;
   StatusSaverService._internal();
 
-  // WhatsApp और WhatsApp Business के सभी संभावित सही पाथ (Android 10 से Android 14+ और Samsung Dual Messenger)
+  // WhatsApp & WA Business Status directories (Android 9 through Android 14+ & Dual Messenger)
   final List<String> statusDirectories = [
     // Standard Android 11, 12, 13, 14 Scoped Storage paths
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/Statuses',
-    
+
     // Legacy Android 9, 10 paths
     '/storage/emulated/0/WhatsApp/Media/.Statuses',
     '/storage/emulated/0/WhatsApp/Media/Statuses',
     '/storage/emulated/0/WhatsApp Business/Media/.Statuses',
     '/storage/emulated/0/WhatsApp Business/Media/Statuses',
-    
+
     // Samsung Dual Messenger / Multi-User paths
     '/storage/emulated/999/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
     '/storage/emulated/999/WhatsApp/Media/.Statuses',
@@ -30,20 +30,20 @@ class StatusSaverService {
     '/storage/emulated/10/Android/media/com.whatsapp/WhatsApp/Media/.Statuses',
     '/storage/emulated/10/WhatsApp/Media/.Statuses',
 
-    // Modded / Alternative WhatsApp builds (GBWhatsApp, etc.)
+    // Alternative builds
     '/storage/emulated/0/Android/media/com.gbwhatsapp/GBWhatsApp/Media/.Statuses',
     '/storage/emulated/0/GBWhatsApp/Media/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp.plus/WhatsApp Plus/Media/.Statuses',
-    
+
     // Video subfolder caches
     '/storage/emulated/0/WhatsApp/Media/WhatsApp Video/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.Statuses',
   ];
 
-  /// Scan WhatsApp status directory for photos and videos securely
+  /// Scan status directory for photos and videos securely
   Future<List<StatusItemModel>> fetchStatuses({StatusAppSource? filterSource}) async {
     final List<StatusItemModel> list = [];
-    final Set<String> uniquePaths = {}; // डुप्लीकेट एंट्री रोकने के लिए
+    final Set<String> uniquePaths = {};
 
     for (final dirPath in statusDirectories) {
       final dir = Directory(dirPath);
@@ -63,9 +63,9 @@ class StatusSaverService {
               final fileName = p.basename(filePath);
               final lowerName = fileName.toLowerCase();
 
-              // Skip WhatsApp internal hidden files, .nomedia, and .thumb cache stubs
-              if (fileName.startsWith('.') || 
-                  lowerName.contains('.thumb') || 
+              // Skip internal hidden files, .nomedia, and .thumb cache stubs
+              if (fileName.startsWith('.') ||
+                  lowerName.contains('.thumb') ||
                   lowerName.endsWith('.nomedia')) {
                 continue;
               }
@@ -77,23 +77,20 @@ class StatusSaverService {
               if (isVideo || isImage) {
                 final stat = entity.statSync();
 
-                // Filter out WhatsApp low-resolution thumbnail blur cache files:
-                // WhatsApp saves tiny 1KB-12KB blurry preview thumbnails in .Statuses cache.
-                // Genuine high-quality status images are > 15KB.
+                // Filter out low-resolution thumbnail blur cache files
                 if (isImage && stat.size < 15 * 1024) {
                   continue;
                 }
-                // Genuine status video clips are > 50KB.
                 if (isVideo && stat.size < 50 * 1024) {
                   continue;
                 }
 
                 uniquePaths.add(filePath);
-                
-                // चेक करें कि क्या यह स्टेटस पहले से VidiMax गैलरी में सेव है या नहीं
-                final savedDir = Directory('/storage/emulated/0/Pictures/VidiMax_Status');
+
+                final savedDir = Directory('/storage/emulated/0/Pictures/RoxPlayer_Status');
                 final savedFile = File(p.join(savedDir.path, fileName));
-                final isSaved = await savedFile.exists();
+                final legacySavedFile = File(p.join('/storage/emulated/0/Pictures/VidiMax_Status', fileName));
+                final isSaved = await savedFile.exists() || await legacySavedFile.exists();
 
                 list.add(
                   StatusItemModel(
@@ -103,8 +100,8 @@ class StatusSaverService {
                     file: entity,
                     mediaType: isVideo ? StatusMediaType.video : StatusMediaType.image,
                     source: source,
-                    size: stat.size, 
-                    modifiedDate: stat.modified, 
+                    size: stat.size,
+                    modifiedDate: stat.modified,
                     isSaved: isSaved,
                   ),
                 );
@@ -113,18 +110,17 @@ class StatusSaverService {
           }
         }
       } catch (e) {
-        // किसी फोल्डर में परमिशन या रीड़ एरर आने पर ऐप क्रैश नहीं होगा, आगे बढ़ जाएगा
+        // Ignore directory permission errors and continue scanning other folders
       }
     }
 
-    // सबसे नए स्टेटस को सबसे ऊपर दिखाने के लिए सॉर्ट करना
     list.sort((a, b) => b.modifiedDate.compareTo(a.modifiedDate));
     return list;
   }
 
   /// Save status permanently to device gallery
   Future<File> saveStatusToGallery(StatusItemModel status) async {
-    final targetDir = Directory('/storage/emulated/0/Pictures/VidiMax_Status');
+    final targetDir = Directory('/storage/emulated/0/Pictures/RoxPlayer_Status');
     if (!await targetDir.exists()) {
       await targetDir.create(recursive: true);
     }
@@ -140,7 +136,7 @@ class StatusSaverService {
   Future<void> shareStatus(StatusItemModel status) async {
     await Share.shareXFiles(
       [XFile(status.path)],
-      text: 'Shared via VidiMax HD Player',
+      text: 'Shared via Rox Player',
     );
   }
 }

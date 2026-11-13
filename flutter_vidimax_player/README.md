@@ -1,6 +1,6 @@
-# VidiMax HD Player — Production-Ready Flutter Application
+# Rox Player — Production-Ready Flutter Application
 
-A modern, high-end "All-in-One" offline Android media player built with Flutter (Material 3), featuring custom video gesture controls, a military-grade encrypted Private Vault with 4-digit PIN, Video-to-MP3 extraction, and WhatsApp Status Saver.
+A modern, high-end "All-in-One" offline Android media player built with Flutter (Material 3), featuring custom video gesture controls, a built-in Music Player with queue & favorites, a WhatsApp Status Saver, Video-to-MP3 extraction, and a military-grade encrypted Secret Vault with 4-digit PIN inside Tools.
 
 ---
 
@@ -9,30 +9,25 @@ A modern, high-end "All-in-One" offline Android media player built with Flutter 
 1. **Splash & Onboarding Carousel**:
    - Custom animated splash screen with neon brand typography.
    - 3-step feature discovery onboarding with skip and smooth dot indicators.
-2. **Home / Video List (Tab 1)**:
+2. **Videos (Tab 1)**:
    - Automated local device video scanning across DCIM, Movies, Downloads, and WhatsApp folders.
-   - Folders view and All Videos view with counts and total sizes.
+   - Folders view and All Videos view with counts, thumbnails, and total sizes.
    - Live search bar and multi-criteria sorting (Date, Name, Size, Duration).
 3. **Advanced Offline Video Player**:
+   - Original aspect ratio playback with orientation toggle, auto-play next toggle, and 2x long-press speed.
    - Double-tap 10-second forward/backward skip.
-   - Left-swipe vertical gesture for Brightness adjustment with on-screen HUD.
-   - Right-swipe vertical gesture for Volume adjustment with on-screen HUD.
-   - Aspect ratio switcher (Fit, Fill, Stretch, 16:9).
-   - Screen Lock mode to avoid accidental touches during video watching.
-   - Playback speed toggling (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x).
-4. **Encrypted Private Vault (Tab 2)**:
-   - 4-digit PIN setup with confirmation and security question recovery.
-   - AES-256 local file encryption. Videos are moved into internal storage and hidden from Android gallery.
-   - Seamless unhide/decrypt back to gallery.
-5. **Media Utilities & Tools (Tab 3)**:
-   - **Video to MP3 Converter**: Extract audio with custom bitrates (128 kbps, 192 kbps, 320 kbps HD).
-   - **WhatsApp Status Saver**: Browse cached photos and videos from WhatsApp and WhatsApp Business, 1-tap save to gallery, and share.
-6. **Settings & Maintenance (Tab 4)**:
-   - AMOLED Dark / Light theme toggle.
-   - Visual storage disk usage bar.
-   - 1-click thumbnail cache cleaner.
-   - Playback preferences (Hardware acceleration, background playback, resume playback).
-   - 100% Offline Privacy Policy guarantee.
+   - Left-swipe vertical gesture for Brightness adjustment and Right-swipe for Volume with on-screen HUD.
+   - Screen Lock mode and playback speed controls (0.5x – 2.0x).
+4. **Music Player (Tab 2)**:
+   - Full-featured audio scanner with Tracks, Folders, and Favorites tabs, Mini Player, Now Playing screen, Previous/Next controls, and Queue sheet.
+5. **Status Saver (Tab 3)**:
+   - Dedicated WhatsApp & WA Business photo/video status saver with 1-tap save to gallery (`/Pictures/RoxPlayer_Status`), HD video playback, and share.
+6. **Tools — Video to MP3 & Secret Vault (Tab 4)**:
+   - **Video to MP3 Converter**: Extract audio with custom bitrates (128 kbps, 192 kbps, 320 kbps HD) to `/Music/RoxPlayer/`.
+   - **Secret Vault**: 4-digit PIN setup with offline Recovery Key protection, AES-256 local encryption for hidden videos & audio tracks, and seamless unhide.
+7. **Settings & Maintenance (Tab 5)**:
+   - Full Light & Dark theme toggle with high-contrast UI across every screen.
+   - Visual storage disk usage bar, 1-click thumbnail cache cleaner, playback preferences, and 100% Offline Privacy Policy guarantee.
 
 ---
 
@@ -102,7 +97,7 @@ When you provide your GitHub credentials and token, here are the exact git comma
 ```bash
 git init
 git add .
-git commit -m "feat: complete VidiMax HD Player Flutter app with Vault, Tools, and Offline Player"
+git commit -m "feat: complete Rox Player Flutter app with Status Saver, Tools, Vault, and Offline Player"
 git branch -M main
 git remote add origin https://<YOUR_GITHUB_TOKEN>@github.com/<YOUR_USERNAME>/<YOUR_REPO_NAME>.git
 git push -u origin main

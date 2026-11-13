@@ -40,12 +40,17 @@ class MiniMusicPlayer extends StatelessWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1B4B).withOpacity(0.95),
+            color: AppTheme.isDark(context)
+                ? const Color(0xFF1E1B4B).withOpacity(0.95)
+                : AppTheme.surfaceLight,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.primaryViolet.withOpacity(0.35), width: 1.2),
+            border: Border.all(
+              color: AppTheme.primaryViolet.withOpacity(AppTheme.isDark(context) ? 0.35 : 0.25),
+              width: 1.2,
+            ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withOpacity(AppTheme.isDark(context) ? 0.4 : 0.12),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -83,8 +88,8 @@ class MiniMusicPlayer extends StatelessWidget {
                             song.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.textPrimary(context),
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -94,8 +99,8 @@ class MiniMusicPlayer extends StatelessWidget {
                             song.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppTheme.textMutedDark,
+                            style: TextStyle(
+                              color: AppTheme.textMuted(context),
                               fontSize: 11,
                             ),
                           ),
@@ -105,7 +110,7 @@ class MiniMusicPlayer extends StatelessWidget {
 
                     // Previous Button
                     IconButton(
-                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white70, size: 24),
+                      icon: Icon(Icons.skip_previous_rounded, color: AppTheme.textSecondary(context), size: 24),
                       padding: const EdgeInsets.all(4),
                       constraints: const BoxConstraints(),
                       tooltip: 'Previous Track',
@@ -129,7 +134,7 @@ class MiniMusicPlayer extends StatelessWidget {
 
                     // Next Button
                     IconButton(
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white70, size: 24),
+                      icon: Icon(Icons.skip_next_rounded, color: AppTheme.textSecondary(context), size: 24),
                       padding: const EdgeInsets.all(4),
                       constraints: const BoxConstraints(),
                       tooltip: 'Next Track',
@@ -155,7 +160,9 @@ class MiniMusicPlayer extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: progress,
                   minHeight: 2.5,
-                  backgroundColor: Colors.white10,
+                  backgroundColor: AppTheme.isDark(context)
+                      ? Colors.white10
+                      : AppTheme.borderLight.withOpacity(0.5),
                   valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryViolet),
                 ),
               ),

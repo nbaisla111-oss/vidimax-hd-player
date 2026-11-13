@@ -52,17 +52,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
       }
     }
 
+    final isDark = AppTheme.isDark(context);
+
     if (song == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundDark,
+        backgroundColor: AppTheme.bg(context),
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        body: const Center(
-          child: Text('No song selected', style: TextStyle(color: Colors.white70)),
+        body: Center(
+          child: Text('No song selected', style: TextStyle(color: AppTheme.textSecondary(context))),
         ),
       );
     }
@@ -73,15 +75,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     final currentMs = posMs.clamp(0.0, maxMs);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: AppTheme.bg(context),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              const Color(0xFF1E1035),
-              AppTheme.backgroundDark,
-              const Color(0xFF0F172A),
-            ],
+            colors: isDark
+                ? [
+                    const Color(0xFF1E1035),
+                    AppTheme.backgroundDark,
+                    const Color(0xFF0F172A),
+                  ]
+                : [
+                    const Color(0xFFEDE9FE),
+                    AppTheme.backgroundLight,
+                    const Color(0xFFE0F2FE),
+                  ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -96,7 +104,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textPrimary(context), size: 32),
                       onPressed: () => Navigator.pop(context),
                       tooltip: 'Collapse Player',
                     ),
@@ -114,10 +122,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         const SizedBox(height: 2),
                         Text(
                           song.folder,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppTheme.textPrimary(context),
                           ),
                         ),
                       ],
@@ -131,7 +139,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           tooltip: 'Playing Queue',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 22),
+                          icon: Icon(Icons.share_rounded, color: AppTheme.textSecondary(context), size: 22),
                           onPressed: () {
                             if (!song.path.startsWith('http')) {
                               Share.shareXFiles([XFile(song.path)], text: 'Listening to ${song.title}');
@@ -187,7 +195,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                 Color(0xFF1E1B4B),
                               ],
                             ),
-                            border: Border.all(color: Colors.white12, width: 3),
+                            border: Border.all(
+                              color: isDark ? Colors.white12 : AppTheme.primaryViolet.withOpacity(0.25),
+                              width: 3,
+                            ),
                           ),
                           child: Center(
                             child: Container(
@@ -228,10 +239,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             song.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: AppTheme.textPrimary(context),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -239,10 +250,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             song.artist,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: AppTheme.textMutedDark,
+                              color: AppTheme.textMuted(context),
                             ),
                           ),
                         ],
@@ -251,7 +262,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     IconButton(
                       icon: Icon(
                         song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: song.isFavorite ? Colors.redAccent : Colors.white60,
+                        color: song.isFavorite ? Colors.redAccent : AppTheme.textMuted(context),
                         size: 28,
                       ),
                       onPressed: () => musicCtrl.toggleFavorite(song),
@@ -266,8 +277,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         activeTrackColor: AppTheme.primaryViolet,
-                        inactiveTrackColor: Colors.white12,
-                        thumbColor: Colors.white,
+                        inactiveTrackColor: isDark ? Colors.white12 : Colors.black12,
+                        thumbColor: isDark ? Colors.white : AppTheme.primaryViolet,
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                         trackHeight: 4,
@@ -289,11 +300,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         children: [
                           Text(
                             _formatDuration(musicCtrl.position),
-                            style: const TextStyle(color: AppTheme.textSecondaryDark, fontSize: 12),
+                            style: TextStyle(color: AppTheme.textSecondary(context), fontSize: 12),
                           ),
                           Text(
                             _formatDuration(musicCtrl.duration),
-                            style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 12),
+                            style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
                           ),
                         ],
                       ),
@@ -310,7 +321,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     IconButton(
                       icon: Icon(
                         Icons.shuffle_rounded,
-                        color: musicCtrl.isShuffle ? AppTheme.primaryViolet : Colors.white38,
+                        color: musicCtrl.isShuffle ? AppTheme.primaryViolet : AppTheme.textMuted(context),
                         size: 24,
                       ),
                       onPressed: () => musicCtrl.toggleShuffle(),
@@ -320,7 +331,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     // Previous
                     IconButton(
                       iconSize: 38,
-                      icon: const Icon(Icons.skip_previous_rounded, color: Colors.white),
+                      icon: Icon(Icons.skip_previous_rounded, color: AppTheme.textPrimary(context)),
                       onPressed: () => musicCtrl.playPrevious(),
                       tooltip: 'Previous Track',
                     ),
@@ -357,7 +368,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     // Next
                     IconButton(
                       iconSize: 38,
-                      icon: const Icon(Icons.skip_next_rounded, color: Colors.white),
+                      icon: Icon(Icons.skip_next_rounded, color: AppTheme.textPrimary(context)),
                       onPressed: () => musicCtrl.playNext(),
                       tooltip: 'Next Track',
                     ),
@@ -367,11 +378,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       icon: Icon(
                         musicCtrl.loopMode == MusicLoopMode.single
                             ? Icons.repeat_one_rounded
-                            : (musicCtrl.loopMode == MusicLoopMode.all
-                                ? Icons.repeat_rounded
-                                : Icons.repeat_rounded),
+                            : Icons.repeat_rounded,
                         color: musicCtrl.loopMode == MusicLoopMode.off
-                            ? Colors.white38
+                            ? AppTheme.textMuted(context)
                             : AppTheme.primaryViolet,
                         size: 24,
                       ),
@@ -389,7 +398,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: isDark ? Colors.white.withOpacity(0.08) : AppTheme.surfaceLight,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: AppTheme.secondaryCyan.withOpacity(0.35)),
                     ),
@@ -400,8 +409,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         const SizedBox(width: 8),
                         Text(
                           'Queue (${musicCtrl.playlist.length} Songs)',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppTheme.textPrimary(context),
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),

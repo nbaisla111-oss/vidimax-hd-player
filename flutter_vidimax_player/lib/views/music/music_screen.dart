@@ -42,13 +42,13 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             ? TextField(
                 controller: _searchCtrl,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.textPrimary(context)),
                 decoration: InputDecoration(
                   hintText: 'Search songs, artists, folders...',
-                  hintStyle: const TextStyle(color: Colors.white54),
+                  hintStyle: TextStyle(color: AppTheme.textMuted(context)),
                   border: InputBorder.none,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                    icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary(context)),
                     onPressed: () {
                       _searchCtrl.clear();
                       musicCtrl.setSearchQuery('');
@@ -99,7 +99,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
           controller: _tabController,
           indicatorColor: AppTheme.primaryViolet,
           labelColor: AppTheme.primaryViolet,
-          unselectedLabelColor: AppTheme.textMutedDark,
+          unselectedLabelColor: AppTheme.textMuted(context),
           tabs: [
             Tab(text: 'Tracks (${musicCtrl.songs.length})'),
             Tab(text: 'Folders (${musicCtrl.folders.length})'),
@@ -121,8 +121,8 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                   Expanded(
                     child: Text(
                       'Folder: ${musicCtrl.selectedFolder}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary(context),
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -130,7 +130,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                   ),
                   InkWell(
                     onTap: () => musicCtrl.setSelectedFolder(null),
-                    child: const Icon(Icons.close_rounded, size: 18, color: Colors.white70),
+                    child: Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary(context)),
                   ),
                 ],
               ),
@@ -165,22 +165,25 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.music_off_rounded, size: 64, color: AppTheme.textMutedDark.withOpacity(0.5)),
+            Icon(Icons.music_off_rounded, size: 64, color: AppTheme.textMuted(context).withOpacity(0.6)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No audio tracks found',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Convert videos to MP3 in Tools or add music to your device',
-              style: TextStyle(color: AppTheme.textMutedDark, fontSize: 12),
+              style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Rescan Storage'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryViolet),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryViolet,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => musicCtrl.scanMusic(),
             ),
           ],
@@ -231,8 +234,8 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             icon: const Icon(Icons.play_arrow_rounded, size: 20),
             label: const Text('Play All'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: AppTheme.borderDark),
+              foregroundColor: AppTheme.textPrimary(context),
+              side: BorderSide(color: AppTheme.border(context)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
@@ -247,14 +250,17 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
 
   Widget _buildSongTile(MusicModel song, MusicController musicCtrl, List<MusicModel> currentQueue) {
     final isCurrent = musicCtrl.currentSong?.id == song.id;
+    final isDark = AppTheme.isDark(context);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: isCurrent ? AppTheme.primaryViolet.withOpacity(0.15) : AppTheme.cardDark,
+        color: isCurrent
+            ? AppTheme.primaryViolet.withOpacity(isDark ? 0.16 : 0.10)
+            : AppTheme.card(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCurrent ? AppTheme.primaryViolet : AppTheme.borderDark,
+          color: isCurrent ? AppTheme.primaryViolet : AppTheme.border(context),
           width: isCurrent ? 1.5 : 1.0,
         ),
       ),
@@ -267,7 +273,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             gradient: LinearGradient(
               colors: isCurrent
                   ? [AppTheme.primaryViolet, AppTheme.secondaryCyan]
-                  : [const Color(0xFF312E81), const Color(0xFF1E1B4B)],
+                  : [const Color(0xFF4F46E5), const Color(0xFF312E81)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -286,7 +292,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: isCurrent ? AppTheme.primaryViolet : Colors.white,
+            color: isCurrent ? AppTheme.primaryViolet : AppTheme.textPrimary(context),
             fontWeight: FontWeight.bold,
             fontSize: 14,
           ),
@@ -295,7 +301,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
           '${song.artist} • ${song.formattedDuration}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 12),
+          style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -303,14 +309,14 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             IconButton(
               icon: Icon(
                 song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: song.isFavorite ? Colors.redAccent : AppTheme.textMutedDark,
+                color: song.isFavorite ? Colors.redAccent : AppTheme.textMuted(context),
                 size: 20,
               ),
               onPressed: () => musicCtrl.toggleFavorite(song),
             ),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMutedDark, size: 20),
-              color: AppTheme.surfaceDark,
+              icon: Icon(Icons.more_vert_rounded, color: AppTheme.textMuted(context), size: 20),
+              color: AppTheme.surface(context),
               onSelected: (val) async {
                 if (val == 'play') {
                   musicCtrl.playSong(song, queue: currentQueue);
@@ -331,40 +337,40 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                   } else {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please set up your 4-digit PIN in the Vault tab first')),
+                        const SnackBar(content: Text('Please set up your 4-digit PIN in Tools > Secret Vault first')),
                       );
                     }
                   }
                 }
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'play',
                   child: Row(
                     children: [
-                      Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 10),
-                      Text('Play Now', style: TextStyle(color: Colors.white)),
+                      Icon(Icons.play_arrow_rounded, color: AppTheme.textPrimary(ctx), size: 18),
+                      const SizedBox(width: 10),
+                      Text('Play Now', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'vault',
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet, size: 18),
-                      SizedBox(width: 10),
-                      Text('Move to Secret Vault', style: TextStyle(color: Colors.white)),
+                      const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet, size: 18),
+                      const SizedBox(width: 10),
+                      Text('Move to Secret Vault', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'share',
                   child: Row(
                     children: [
-                      Icon(Icons.share_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 10),
-                      Text('Share Track', style: TextStyle(color: Colors.white)),
+                      Icon(Icons.share_rounded, color: AppTheme.textPrimary(ctx), size: 18),
+                      const SizedBox(width: 10),
+                      Text('Share Track', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
@@ -382,7 +388,12 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
   Widget _buildFoldersList(MusicController musicCtrl) {
     final folders = musicCtrl.folders;
     if (folders.isEmpty) {
-      return const Center(child: Text('No folders found', style: TextStyle(color: Colors.white70)));
+      return Center(
+        child: Text(
+          'No folders found',
+          style: TextStyle(color: AppTheme.textSecondary(context)),
+        ),
+      );
     }
 
     return ListView.builder(
@@ -395,9 +406,9 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            color: AppTheme.cardDark,
+            color: AppTheme.card(context),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.borderDark),
+            border: Border.all(color: AppTheme.border(context)),
           ),
           child: ListTile(
             leading: Container(
@@ -410,13 +421,13 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
             ),
             title: Text(
               folder,
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary(context), fontSize: 14),
             ),
             subtitle: Text(
               '$count audio tracks',
-              style: const TextStyle(color: AppTheme.textMutedDark, fontSize: 12),
+              style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMutedDark),
+            trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted(context)),
             onTap: () {
               musicCtrl.setSelectedFolder(folder);
               _tabController.animateTo(0);
@@ -434,16 +445,16 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_border_rounded, size: 64, color: AppTheme.textMutedDark.withOpacity(0.5)),
+            Icon(Icons.favorite_border_rounded, size: 64, color: AppTheme.textMuted(context).withOpacity(0.5)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No favorite songs yet',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.textPrimary(context), fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Tap the heart icon on any song to add it here',
-              style: TextStyle(color: AppTheme.textMutedDark, fontSize: 12),
+              style: TextStyle(color: AppTheme.textMuted(context), fontSize: 12),
             ),
           ],
         ),
@@ -463,7 +474,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
   void _showSortModal(BuildContext context, MusicController musicCtrl) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surfaceDark,
+      backgroundColor: AppTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -473,11 +484,11 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
                   'Sort Tracks By',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary(ctx)),
                 ),
               ),
               ...List.generate(options.length, (idx) {
@@ -486,7 +497,7 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
                   title: Text(
                     options[idx],
                     style: TextStyle(
-                      color: isSelected ? AppTheme.primaryViolet : Colors.white,
+                      color: isSelected ? AppTheme.primaryViolet : AppTheme.textPrimary(ctx),
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),

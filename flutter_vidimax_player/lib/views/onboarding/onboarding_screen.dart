@@ -15,7 +15,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Type removed here completely to prevent bracket stripping errors
   final _pages = [
     {
       'icon': Icons.movie_filter_rounded,
@@ -26,13 +25,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     {
       'icon': Icons.lock_person_rounded,
       'title': 'Encrypted Secret Vault',
-      'subtitle': 'Lock private personal videos behind a secure 4-digit PIN. Military-grade AES encryption keeps your files safe and hidden from phone gallery.',
+      'subtitle': 'Lock private personal videos & music behind a secure 4-digit PIN inside Tools. AES encryption keeps your files hidden from gallery.',
       'gradient': [const Color(0xFFEC4899), AppTheme.primaryViolet],
     },
     {
       'icon': Icons.auto_awesome_motion_rounded,
-      'title': 'Media Tools & Status Saver',
-      'subtitle': 'Convert videos to MP3 audio tracks instantly and download WhatsApp & WA Business statuses in one single tap.',
+      'title': 'Status Saver & Audio Tools',
+      'subtitle': 'Save photo & video statuses directly to your gallery and extract crisp MP3 audio tracks from any video in one tap.',
       'gradient': [AppTheme.secondaryCyan, AppTheme.accentEmerald],
     },
   ];
@@ -50,7 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: AppTheme.bg(context),
       body: SafeArea(
         child: Column(
           children: [
@@ -60,12 +59,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'VidiMax',
+                  Text(
+                    'Rox Player',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimaryDark,
+                      color: AppTheme.textPrimary(context),
                     ),
                   ),
                   TextButton(
@@ -73,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Text(
                       'Skip',
                       style: TextStyle(
-                        color: AppTheme.textSecondaryDark,
+                        color: AppTheme.textSecondary(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -96,7 +95,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Card visual
                         Container(
                           width: 140,
                           height: 140,
@@ -125,10 +123,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           page['title'] as String,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: AppTheme.textPrimary(context),
                             letterSpacing: -0.5,
                           ),
                         ),
@@ -136,10 +134,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           page['subtitle'] as String,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             height: 1.5,
-                            color: AppTheme.textSecondaryDark,
+                            color: AppTheme.textSecondary(context),
                           ),
                         ),
                       ],
@@ -158,7 +156,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     count: _pages.length,
                     effect: ExpandingDotsEffect(
                       activeDotColor: AppTheme.primaryViolet,
-                      dotColor: AppTheme.borderDark,
+                      dotColor: AppTheme.border(context),
                       dotHeight: 8,
                       dotWidth: 8,
                       expansionFactor: 3.5,

@@ -12,16 +12,6 @@ import 'views/splash/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set system UI overlay style for seamless edge-to-edge dark immersive experience
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppTheme.backgroundDark,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-
   runApp(
     MultiProvider(
       providers: [
@@ -31,25 +21,34 @@ void main() async {
         ChangeNotifierProvider(create: (_) => VaultController()..checkStatus()),
         ChangeNotifierProvider(create: (_) => ToolsController()),
       ],
-      child: const VidiMaxApp(),
+      child: const RoxPlayerApp(),
     ),
   );
 }
 
-class VidiMaxApp extends StatelessWidget {
-  const VidiMaxApp({super.key});
+class RoxPlayerApp extends StatelessWidget {
+  const RoxPlayerApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final themeController = Provider.of<ThemeController>(context);
+    final isDark = themeController.isDarkMode;
 
-    return MaterialApp(
-      title: 'VidiMax HD Player',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeController.themeMode,
-      home: const SplashScreen(),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      ),
+      child: MaterialApp(
+        title: 'Rox Player',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeController.themeMode,
+        home: const SplashScreen(),
+      ),
     );
   }
 }

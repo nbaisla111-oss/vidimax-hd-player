@@ -28,15 +28,17 @@ class MusicQueueBottomSheet extends StatelessWidget {
       maxChildSize: 0.92,
       expand: false,
       builder: (context, scrollController) {
+        final isDark = AppTheme.isDark(context);
+
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF131127),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: AppTheme.surface(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black54,
+                color: Colors.black.withOpacity(isDark ? 0.54 : 0.18),
                 blurRadius: 20,
-                offset: Offset(0, -6),
+                offset: const Offset(0, -6),
               ),
             ],
           ),
@@ -49,7 +51,7 @@ class MusicQueueBottomSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: isDark ? Colors.white24 : AppTheme.borderLight,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -63,7 +65,7 @@ class MusicQueueBottomSheet extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryViolet.withOpacity(0.2),
+                        color: AppTheme.primaryViolet.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 22),
@@ -73,10 +75,10 @@ class MusicQueueBottomSheet extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Current Playing Queue',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppTheme.textPrimary(context),
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
@@ -84,8 +86,8 @@ class MusicQueueBottomSheet extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             '${playlist.length} Songs in list • Tap to play directly',
-                            style: const TextStyle(
-                              color: AppTheme.textMutedDark,
+                            style: TextStyle(
+                              color: AppTheme.textMuted(context),
                               fontSize: 12,
                             ),
                           ),
@@ -93,22 +95,22 @@ class MusicQueueBottomSheet extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                      icon: Icon(Icons.close_rounded, color: AppTheme.textSecondary(context)),
                       onPressed: () => Navigator.pop(context),
                       tooltip: 'Close',
                     ),
                   ],
                 ),
               ),
-              const Divider(color: Colors.white10, height: 1),
+              Divider(color: AppTheme.border(context), height: 1),
 
               // Queue List
               Expanded(
                 child: playlist.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'No songs in playing queue',
-                          style: TextStyle(color: AppTheme.textMutedDark),
+                          style: TextStyle(color: AppTheme.textMuted(context)),
                         ),
                       )
                     : ListView.builder(
@@ -123,7 +125,7 @@ class MusicQueueBottomSheet extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(vertical: 3),
                             decoration: BoxDecoration(
                               color: isCurrent
-                                  ? AppTheme.primaryViolet.withOpacity(0.18)
+                                  ? AppTheme.primaryViolet.withOpacity(isDark ? 0.18 : 0.10)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(14),
                               border: isCurrent
@@ -160,8 +162,8 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                         )
                                       : Text(
                                           '${index + 1}',
-                                          style: const TextStyle(
-                                            color: AppTheme.textMutedDark,
+                                          style: TextStyle(
+                                            color: AppTheme.textMuted(context),
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -173,7 +175,9 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isCurrent ? AppTheme.secondaryCyan : Colors.white,
+                                  color: isCurrent
+                                      ? (isDark ? AppTheme.secondaryCyan : AppTheme.primaryViolet)
+                                      : AppTheme.textPrimary(context),
                                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                                   fontSize: 14,
                                 ),
@@ -183,7 +187,9 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isCurrent ? Colors.white70 : AppTheme.textMutedDark,
+                                  color: isCurrent
+                                      ? AppTheme.textSecondary(context)
+                                      : AppTheme.textMuted(context),
                                   fontSize: 11,
                                 ),
                               ),
@@ -194,10 +200,10 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                         color: AppTheme.secondaryCyan.withOpacity(0.2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: const Text(
+                                      child: Text(
                                         'PLAYING',
                                         style: TextStyle(
-                                          color: AppTheme.secondaryCyan,
+                                          color: isDark ? AppTheme.secondaryCyan : AppTheme.primaryViolet,
                                           fontSize: 10,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.5,
@@ -205,8 +211,11 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                       ),
                                     )
                                   : IconButton(
-                                      icon: const Icon(Icons.play_circle_outline_rounded,
-                                          color: Colors.white38, size: 24),
+                                      icon: Icon(
+                                        Icons.play_circle_outline_rounded,
+                                        color: AppTheme.textMuted(context),
+                                        size: 24,
+                                      ),
                                       onPressed: () => musicCtrl.playSong(song, queue: playlist),
                                     ),
                               onTap: () {

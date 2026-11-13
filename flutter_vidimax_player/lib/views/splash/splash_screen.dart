@@ -36,14 +36,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _checkNextScreen() async {
-    await Future.delayed(const Duration(milliseconds: 2200));
+    await Future.delayed(const Duration(milliseconds: 1800));
     final prefs = await SharedPreferences.getInstance();
     final seenOnboarding = prefs.getBool('vidimax_seen_onboarding') ?? false;
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 600),
+        transitionDuration: const Duration(milliseconds: 500),
         pageBuilder: (_, __, ___) => seenOnboarding
             ? const MainNavScreen()
             : const OnboardingScreen(),
@@ -62,8 +62,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundDark,
+      backgroundColor: AppTheme.bg(context),
       body: Stack(
         children: [
           // Ambient background gradient glow
@@ -75,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppTheme.primaryViolet.withOpacity(0.25),
+                    AppTheme.primaryViolet.withOpacity(isDark ? 0.25 : 0.14),
                     Colors.transparent,
                   ],
                 ),
@@ -90,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Brand Icon with gradient and glass border
+                    // Brand Icon with gradient and shadow
                     Container(
                       width: 96,
                       height: 96,
@@ -118,12 +120,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
-                      'VidiMax HD',
+                    Text(
+                      'Rox Player',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: AppTheme.textPrimary(context),
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -134,7 +136,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 2.0,
-                        color: AppTheme.secondaryCyan.withOpacity(0.9),
+                        color: isDark ? AppTheme.secondaryCyan : AppTheme.primaryViolet,
                       ),
                     ),
                   ],
@@ -152,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 'v1.0.0 • Offline & Encrypted',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textMutedDark.withOpacity(0.7),
+                  color: AppTheme.textMuted(context),
                   fontWeight: FontWeight.w500,
                 ),
               ),

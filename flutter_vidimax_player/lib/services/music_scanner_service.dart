@@ -19,6 +19,7 @@ class MusicScannerService {
 
     final targetDirs = [
       Directory('/storage/emulated/0/Music'),
+      Directory('/storage/emulated/0/Music/RoxPlayer'),
       Directory('/storage/emulated/0/Music/VidiMax'),
       Directory('/storage/emulated/0/Download'),
       Directory('/storage/emulated/0/Audio'),
@@ -54,7 +55,9 @@ class MusicScannerService {
                     MusicModel(
                       id: entity.path.hashCode.toString(),
                       title: title.replaceAll(RegExp(r'[_-]'), ' '),
-                      artist: folderName.contains('VidiMax') ? 'VidiMax Extracted' : (folderName.isEmpty ? 'Device Audio' : folderName),
+                      artist: (folderName.contains('RoxPlayer') || folderName.contains('VidiMax'))
+                          ? 'Rox Extracted'
+                          : (folderName.isEmpty ? 'Device Audio' : folderName),
                       album: folderName,
                       path: entity.path,
                       size: stat.size,
@@ -87,12 +90,12 @@ class MusicScannerService {
       MusicModel(
         id: 'sample_1',
         title: 'Midnight Chill Vibes',
-        artist: 'VidiMax Studio',
+        artist: 'Rox Player Studio',
         album: 'Lo-Fi Lounge',
         path: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
         size: 4194304,
         duration: const Duration(minutes: 3, seconds: 45),
-        folder: 'VidiMax Studio',
+        folder: 'Rox Player Studio',
         dateAdded: DateTime.now().subtract(const Duration(days: 1)),
         isFavorite: true,
       ),

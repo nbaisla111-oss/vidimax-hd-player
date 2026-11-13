@@ -106,15 +106,15 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   }
 
   Widget _buildPlaceholder() {
+    final isDark = AppTheme.isDark(context);
     return Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            const Color(0xFF1E1B4B),
-            AppTheme.cardDark,
-          ],
+          colors: isDark
+              ? [const Color(0xFF1E1B4B), AppTheme.cardDark]
+              : [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -123,12 +123,12 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.play_arrow_rounded,
-            color: Colors.white60,
+            color: isDark ? Colors.white60 : Colors.black45,
             size: 24,
           ),
         ),

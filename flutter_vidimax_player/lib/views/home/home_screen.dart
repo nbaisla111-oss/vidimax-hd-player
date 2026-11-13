@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 12),
             Text(
-              videoCtrl.selectedFolder ?? 'VidiMax HD',
+              videoCtrl.selectedFolder ?? 'Rox Player',
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
             ),
           ],
@@ -183,10 +183,10 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryViolet : Colors.transparent,
+          color: isSelected ? AppTheme.primaryViolet : AppTheme.card(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryViolet : AppTheme.borderDark,
+            color: isSelected ? AppTheme.primaryViolet : AppTheme.border(context),
           ),
         ),
         child: Text(
@@ -194,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppTheme.textSecondaryDark,
+            color: isSelected ? Colors.white : AppTheme.textSecondary(context),
           ),
         ),
       ),
@@ -203,7 +203,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFoldersGrid(VideoController videoCtrl) {
     if (videoCtrl.folders.isEmpty) {
-      return const Center(child: Text('No folders with videos found'));
+      return Center(
+        child: Text(
+          'No folders with videos found',
+          style: TextStyle(color: AppTheme.textSecondary(context)),
+        ),
+      );
     }
 
     final folderList = videoCtrl.folders.values.toList();
@@ -227,9 +232,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.cardDark,
+              color: AppTheme.card(context),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderDark),
+              border: Border.all(color: AppTheme.border(context)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,18 +259,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       folder.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: AppTheme.textPrimary(context),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${folder.count} videos · ${folder.formattedTotalSize}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textMutedDark,
+                        color: AppTheme.textMuted(context),
                       ),
                     ),
                   ],
@@ -284,16 +289,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.video_library_outlined, size: 64, color: AppTheme.textMutedDark),
+            Icon(Icons.video_library_outlined, size: 64, color: AppTheme.textMuted(context)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No videos found',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary(context)),
             ),
             const SizedBox(height: 6),
             Text(
               'Tap refresh to scan storage or check folder permissions',
-              style: TextStyle(fontSize: 12, color: AppTheme.textMutedDark),
+              style: TextStyle(fontSize: 12, color: AppTheme.textMuted(context)),
             ),
           ],
         ),
@@ -328,9 +333,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.cardDark,
+          color: AppTheme.card(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderDark),
+          border: Border.all(color: AppTheme.border(context)),
         ),
         child: Row(
           children: [
@@ -374,10 +379,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     video.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppTheme.textPrimary(context),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -385,9 +390,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     '${video.formattedSize} · ${video.folderName} · ${video.resolution}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.textMutedDark,
+                      color: AppTheme.textMuted(context),
                     ),
                   ),
                 ],
@@ -395,51 +400,64 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             // Context Action Menu
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textMutedDark, size: 20),
+              icon: Icon(Icons.more_vert_rounded, color: AppTheme.textMuted(context), size: 20),
+              color: AppTheme.surface(context),
               onSelected: (action) {
-                if (action == 'vault') {
+                if (action == 'play') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CustomVideoPlayerScreen(
+                        video: video,
+                        playlist: videoCtrl.videos,
+                        initialIndex: index,
+                      ),
+                    ),
+                  );
+                } else if (action == 'vault') {
                   final vaultCtrl = Provider.of<VaultController>(context, listen: false);
                   if (vaultCtrl.isUnlocked) {
                     vaultCtrl.hideVideo(video);
                     videoCtrl.removeVideoLocally(video.id);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Video securely moved to Private Vault')),
+                      const SnackBar(content: Text('Video securely moved to Secret Vault')),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please unlock Private Vault first in the Vault tab')),
+                      const SnackBar(content: Text('Please unlock Secret Vault first in Tools > Secret Vault')),
                     );
                   }
+                } else if (action == 'info') {
+                  _showVideoInfoDialog(video);
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
                   value: 'play',
                   child: Row(
                     children: [
-                      Icon(Icons.play_arrow_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Text('Play Video'),
+                      Icon(Icons.play_arrow_rounded, size: 18, color: AppTheme.textPrimary(ctx)),
+                      const SizedBox(width: 8),
+                      Text('Play Video', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'vault',
                   child: Row(
                     children: [
-                      Icon(Icons.lock_outline_rounded, size: 18, color: AppTheme.primaryViolet),
-                      SizedBox(width: 8),
-                      Text('Move to Secret Vault'),
+                      const Icon(Icons.lock_outline_rounded, size: 18, color: AppTheme.primaryViolet),
+                      const SizedBox(width: 8),
+                      Text('Move to Secret Vault', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'info',
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Text('Video Properties'),
+                      Icon(Icons.info_outline_rounded, size: 18, color: AppTheme.textPrimary(ctx)),
+                      const SizedBox(width: 8),
+                      Text('Video Properties', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],
                   ),
                 ),
@@ -448,6 +466,66 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showVideoInfoDialog(VideoModel video) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Video Properties'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('Title', video.title),
+            const SizedBox(height: 8),
+            _buildInfoRow('Folder', video.folderName),
+            const SizedBox(height: 8),
+            _buildInfoRow('Size', video.formattedSize),
+            const SizedBox(height: 8),
+            _buildInfoRow('Duration', video.formattedDuration),
+            const SizedBox(height: 8),
+            _buildInfoRow('Resolution', video.resolution),
+            const SizedBox(height: 8),
+            _buildInfoRow('Path', video.path),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 78,
+          child: Text(
+            '$label:',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+              color: AppTheme.textSecondary(context),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.textPrimary(context),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
