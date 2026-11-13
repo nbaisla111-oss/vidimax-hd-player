@@ -57,6 +57,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (isPlayerActive) {
+            methodChannel?.invokeMethod("onPlayerBackgrounded", null)
+        }
+    }
+
     override fun onDestroy() {
         try {
             unregisterReceiver(pipActionReceiver)

@@ -44,6 +44,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
   bool _isMuted = false;
   bool _is2xActive = false;
   bool _isInPipMode = false;
+  bool _lastPipPlaying = false;
 
   double _volume = 1.0;
   double _volumeBeforeMute = 1.0;
@@ -105,17 +106,25 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       } else if (action == 'toggle') {
         _togglePlayPause();
       }
+    } else if (call.method == 'onPlayerBackgrounded') {
+      if (_controller?.value.isPlaying ?? false) {
+        _controller?.pause();
+        setState(() {});
+        _syncPipPlayerState(active: true);
+      }
     }
   }
 
   Future<void> _syncPipPlayerState({bool active = true}) async {
     try {
+      final playing = _controller?.value.isPlaying ?? false;
+      _lastPipPlaying = playing;
       final size = _controller?.value.size;
       final w = (size != null && size.width > 0) ? size.width.round() : 16;
       final h = (size != null && size.height > 0) ? size.height.round() : 9;
       await _systemChannel.invokeMethod('setPipPlayerState', {
         'active': active,
-        'playing': _controller?.value.isPlaying ?? false,
+        'playing': playing,
         'width': w,
         'height': h,
       });
@@ -214,6 +223,10 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
         _playNextVideo();
         return;
       }
+    }
+
+    if (val.isPlaying != _lastPipPlaying) {
+      _syncPipPlayerState(active: true);
     }
 
     setState(() {});
@@ -342,6 +355,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
   }
 
   void _skipSeconds(bool forward) {
+    if (_isLocked || _isInPipMode) return;
     final ctrl = _controller;
     if (ctrl == null || !_isInitialized) return;
     final current = ctrl.value.position;
@@ -643,6 +657,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
         child: GestureDetector(
           onTap: _toggleControls,
           onDoubleTapDown: (details) {
+            if (_isLocked || _isInPipMode) return;
             final screenWidth = MediaQuery.of(context).size.width;
             if (details.globalPosition.dx < screenWidth / 2) {
               _skipSeconds(false);
@@ -660,8 +675,8 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
               InteractiveViewer(
                 minScale: 1.0,
                 maxScale: 3.5,
-                panEnabled: true,
-                scaleEnabled: true,
+                panEnabled: !_isLocked && !_isInPipMode,
+                scaleEnabled: !_isLocked && !_isInPipMode,
                 child: _buildVideoSurface(screenSize),
               ),
 
@@ -1158,6 +1173,8 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
                 icon: const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 22),
                 tooltip: 'Lock Controls',
                 onPressed: () {
@@ -1168,56 +1185,67 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 26),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.replay_10_rounded, color: Colors.white, size: 25),
                 tooltip: 'Rewind 10s',
                 onPressed: () => _skipSeconds(false),
               ),
               IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   Icons.skip_previous_rounded,
                   color: _hasAvailablePrevious() ? Colors.white : Colors.white30,
-                  size: 30,
+                  size: 29,
                 ),
                 tooltip: 'Previous Video',
                 onPressed: _hasAvailablePrevious() ? _playPreviousVideo : null,
               ),
               Container(
-                width: 48,
-                height: 48,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.16),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white38, width: 1.2),
                 ),
                 child: IconButton(
+                  padding: EdgeInsets.zero,
                   icon: Icon(
                     (value?.isPlaying ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: Colors.white,
-                    size: 30,
+                    size: 29,
                   ),
                   tooltip: (value?.isPlaying ?? false) ? 'Pause' : 'Play',
                   onPressed: _togglePlayPause,
                 ),
               ),
               IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   Icons.skip_next_rounded,
                   color: _hasAvailableNext() ? Colors.white : Colors.white30,
-                  size: 30,
+                  size: 29,
                 ),
                 tooltip: 'Next Video',
                 onPressed: _hasAvailableNext() ? _playNextVideo : null,
               ),
               IconButton(
-                icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 26),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.forward_10_rounded, color: Colors.white, size: 25),
                 tooltip: 'Forward 10s',
                 onPressed: () => _skipSeconds(true),
               ),
               IconButton(
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 40),
+                padding: EdgeInsets.zero,
                 icon: Icon(
                   _isLandscape ? Icons.fullscreen_exit_rounded : Icons.fullscreen_rounded,
                   color: Colors.white,
-                  size: 26,
+                  size: 25,
                 ),
                 tooltip: 'Fullscreen / Rotate',
                 onPressed: _toggleOrientation,
