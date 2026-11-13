@@ -102,3 +102,10 @@ git branch -M main
 git remote add origin https://<YOUR_GITHUB_TOKEN>@github.com/<YOUR_USERNAME>/<YOUR_REPO_NAME>.git
 git push -u origin main
 ```
+
+---
+
+## 📧 Support & Contact
+
+For bug reports, feedback, or any app issues, please reach out to:
+- **Email:** `nbaisla111@gmail.com`

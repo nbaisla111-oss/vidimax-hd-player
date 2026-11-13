@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../controllers/theme_controller.dart';
@@ -175,10 +176,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: _showPrivacyPolicyModal,
                 ),
                 const Divider(height: 1, indent: 56),
+                ListTile(
+                  leading: const Icon(Icons.mail_outline_rounded, color: AppTheme.accentEmerald),
+                  title: const Text('Support & Report Issue', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('nbaisla111@gmail.com'),
+                  trailing: const Icon(Icons.copy_rounded, size: 18),
+                  onTap: _showSupportDialog,
+                ),
+                const Divider(height: 1, indent: 56),
                 const ListTile(
                   leading: Icon(Icons.info_outline_rounded, color: AppTheme.primaryViolet),
                   title: Text('Rox Player', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Version 1.0.0 (Production Build) · Flutter Clean Architecture'),
+                  subtitle: Text('Version 1.0.0 (Production Build) · Offline Media Suite'),
                 ),
               ],
             ),
@@ -233,6 +242,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Support & Issue Reporting'),
+        content: const Text(
+          'Facing any bug, playback problem, or have a feature suggestion for Rox Player?\n\n'
+          'Contact us anytime at:\nnbaisla111@gmail.com',
+          style: TextStyle(fontSize: 13.5, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: 'nbaisla111@gmail.com'));
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Support email copied: nbaisla111@gmail.com')),
+              );
+            },
+            child: const Text('Copy Email', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showPrivacyPolicyModal() {
     showDialog(
       context: context,
@@ -244,7 +283,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '• All videos and music are processed strictly offline on your local Android device.\n'
             '• Secret Vault files are encrypted using local AES-256 with key derivation from your personal PIN. No files or keys are transmitted to any external server.\n'
             '• Zero telemetry, zero analytics tracking, and zero cloud uploads.\n'
-            '• Status Saver viewing and saving operations read directly from local device storage without accessing any account credentials.',
+            '• Status Saver viewing and saving operations read directly from local device storage without accessing any account credentials.\n\n'
+            'For support, privacy questions, or issue reporting, contact:\nnbaisla111@gmail.com',
             style: TextStyle(fontSize: 13, height: 1.5),
           ),
         ),
