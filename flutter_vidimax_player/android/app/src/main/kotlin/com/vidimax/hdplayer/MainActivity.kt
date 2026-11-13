@@ -9,8 +9,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.drawable.Icon
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Rational
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
@@ -60,6 +62,11 @@ class MainActivity : FlutterActivity() {
     override fun onStop() {
         super.onStop()
         if (isPlayerActive) {
+            val layout = window.attributes
+            if (layout.screenBrightness != WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE) {
+                layout.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = layout
+            }
             methodChannel?.invokeMethod("onPlayerBackgrounded", null)
         }
     }
@@ -78,6 +85,20 @@ class MainActivity : FlutterActivity() {
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
+                "getScreenBrightness" -> {
+                    val current = window.attributes.screenBrightness
+                    val effective = if (current >= 0f) {
+                        current.toDouble().coerceIn(0.02, 1.0)
+                    } else {
+                        try {
+                            val sys = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+                            (sys.toDouble() / 255.0).coerceIn(0.05, 1.0)
+                        } catch (_: Exception) {
+                            0.5
+                        }
+                    }
+                    result.success(effective)
+                }
                 "setScreenBrightness" -> {
                     val brightness = call.argument<Double>("brightness")?.toFloat() ?: -1.0f
                     val layout = window.attributes
@@ -90,6 +111,21 @@ class MainActivity : FlutterActivity() {
                     layout.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                     window.attributes = layout
                     result.success(true)
+                }
+                "getMediaVolume" -> {
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                    result.success(current.toDouble() / max.toDouble())
+                }
+                "setMediaVolume" -> {
+                    val targetFraction = (call.argument<Double>("volume") ?: 0.5).coerceIn(0.0, 1.0)
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                    val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+                    val targetStep = Math.round(targetFraction * max).toInt().coerceIn(0, max)
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetStep, 0)
+                    val actual = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max.toDouble()
+                    result.success(actual)
                 }
                 "setPipPlayerState" -> {
                     isPlayerActive = call.argument<Boolean>("active") ?: false
@@ -129,6 +165,13 @@ class MainActivity : FlutterActivity() {
     @Suppress("DEPRECATION")
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode)
+        if (isInPictureInPictureMode) {
+            val layout = window.attributes
+            if (layout.screenBrightness != WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE) {
+                layout.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                window.attributes = layout
+            }
+        }
         methodChannel?.invokeMethod("onPipModeChanged", isInPictureInPictureMode)
     }
 

@@ -47,9 +47,15 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
   bool _lastPipPlaying = false;
 
   double _volume = 1.0;
-  double _volumeBeforeMute = 1.0;
-  double _brightness = 0.65;
+  double _brightness = 0.5;
   double _playbackSpeed = 1.0;
+
+  bool _isExiting = false;
+  bool _hasCustomBrightness = false;
+  bool _isDraggingVolume = false;
+  bool _volumeSyncedForDrag = false;
+  double _pendingVolumeDelta = 0.0;
+  int _lastSentVolumePercent = -1;
 
   Timer? _hideControlsTimer;
   Timer? _indicatorTimer;
@@ -72,15 +78,35 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _currentIndex = widget.initialIndex;
 
     _systemChannel.setMethodCallHandler(_handleNativeCallback);
+    _loadInitialHardwareState();
     _initializeVideo();
-    _applyHardwareBrightness(_brightness);
+  }
+
+  Future<void> _loadInitialHardwareState() async {
+    try {
+      final sysBrightness = await _systemChannel.invokeMethod<double>('getScreenBrightness');
+      final sysVolume = await _systemChannel.invokeMethod<double>('getMediaVolume');
+      if (!mounted) return;
+      setState(() {
+        if (sysBrightness != null && !_hasCustomBrightness) {
+          _brightness = sysBrightness.clamp(0.02, 1.0);
+        }
+        if (sysVolume != null && !_isDraggingVolume) {
+          _volume = sysVolume.clamp(0.0, 1.0);
+          _isMuted = _volume == 0.0;
+        }
+      });
+    } catch (_) {}
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _isInPipMode && mounted) {
-      setState(() => _isInPipMode = false);
-      _syncPipPlayerState();
+    if (state == AppLifecycleState.resumed) {
+      if (_isInPipMode && mounted) {
+        setState(() => _isInPipMode = false);
+        _syncPipPlayerState();
+      }
+      _loadInitialHardwareState();
     }
   }
 
@@ -176,7 +202,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       _controller = ctrl;
       await ctrl.initialize();
       ctrl.addListener(_videoListener);
-      await ctrl.setVolume(_isMuted ? 0.0 : _volume);
+      await ctrl.setVolume(_isMuted ? 0.0 : 1.0);
       await ctrl.setPlaybackSpeed(_playbackSpeed);
       await ctrl.setLooping(_isLooping);
 
@@ -195,7 +221,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
         _controller = fallbackCtrl;
         await fallbackCtrl.initialize();
         fallbackCtrl.addListener(_videoListener);
-        await fallbackCtrl.setVolume(_isMuted ? 0.0 : _volume);
+        await fallbackCtrl.setVolume(_isMuted ? 0.0 : 1.0);
         await fallbackCtrl.setPlaybackSpeed(_playbackSpeed);
         await fallbackCtrl.setLooping(_isLooping);
         if (mounted) {
@@ -313,10 +339,12 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     setState(() {
       if (_isMuted) {
         _isMuted = false;
-        _volume = _volumeBeforeMute > 0 ? _volumeBeforeMute : 0.7;
-        ctrl.setVolume(_volume);
+        ctrl.setVolume(1.0);
+        if (_volume <= 0.01) {
+          _volume = 0.5;
+          _applyHardwareVolume(_volume);
+        }
       } else {
-        _volumeBeforeMute = _volume;
         _isMuted = true;
         ctrl.setVolume(0.0);
       }
@@ -407,12 +435,53 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     } catch (_) {}
   }
 
+  Future<void> _applyHardwareVolume(double volume) async {
+    final percent = (volume.clamp(0.0, 1.0) * 100).round();
+    if (percent == _lastSentVolumePercent) return;
+    _lastSentVolumePercent = percent;
+    try {
+      await _systemChannel.invokeMethod('setMediaVolume', {
+        'volume': volume.clamp(0.0, 1.0),
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _syncVolumeBeforeDrag() async {
+    try {
+      final hwVol = await _systemChannel.invokeMethod<double>('getMediaVolume');
+      if (hwVol != null && mounted && _isDraggingVolume) {
+        setState(() {
+          _volume = (hwVol + _pendingVolumeDelta).clamp(0.0, 1.0);
+          _isMuted = _volume == 0.0;
+          _volumeSyncedForDrag = true;
+        });
+        _controller?.setVolume(_isMuted ? 0.0 : 1.0);
+        _applyHardwareVolume(_volume);
+      }
+    } catch (_) {
+      _volumeSyncedForDrag = true;
+    }
+  }
+
+  void _onVerticalDragStart(DragStartDetails details) {
+    if (_isLocked || _isInPipMode) return;
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (details.globalPosition.dx >= screenWidth / 2) {
+      _isDraggingVolume = true;
+      _volumeSyncedForDrag = false;
+      _pendingVolumeDelta = 0.0;
+      _lastSentVolumePercent = -1;
+      _syncVolumeBeforeDrag();
+    }
+  }
+
   void _onVerticalDrag(DragUpdateDetails details) {
     if (_isLocked || _isInPipMode) return;
     final screenWidth = MediaQuery.of(context).size.width;
     final delta = -(details.primaryDelta ?? 0) / 250;
 
     if (details.globalPosition.dx < screenWidth / 2) {
+      _hasCustomBrightness = true;
       setState(() {
         _brightness = (_brightness + delta).clamp(0.02, 1.0);
         _showBrightnessIndicator = true;
@@ -420,13 +489,38 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       _applyHardwareBrightness(_brightness);
       _resetIndicatorTimer();
     } else {
+      if (!_volumeSyncedForDrag) {
+        _pendingVolumeDelta += delta;
+      }
       setState(() {
         _volume = (_volume + delta).clamp(0.0, 1.0);
         _isMuted = _volume == 0.0;
-        _controller?.setVolume(_volume);
+        _controller?.setVolume(_isMuted ? 0.0 : 1.0);
         _showVolumeIndicator = true;
       });
+      if (_volumeSyncedForDrag) {
+        _applyHardwareVolume(_volume);
+      }
       _resetIndicatorTimer();
+    }
+  }
+
+  void _onVerticalDragEnd() {
+    _isDraggingVolume = false;
+    _volumeSyncedForDrag = false;
+    _pendingVolumeDelta = 0.0;
+  }
+
+  Future<void> _exitPlayer() async {
+    if (_isExiting) return;
+    _isExiting = true;
+    _hideControlsTimer?.cancel();
+    if (_hasCustomBrightness) {
+      await _resetHardwareBrightness();
+    }
+    await _syncPipPlayerState(active: false);
+    if (mounted) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -630,7 +724,9 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _systemChannel.setMethodCallHandler(null);
     _controller?.removeListener(_videoListener);
     _controller?.dispose();
-    _resetHardwareBrightness();
+    if (_hasCustomBrightness) {
+      _resetHardwareBrightness();
+    }
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -649,43 +745,46 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       );
     }
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        top: !_isLandscape,
-        bottom: !_isLandscape,
-        child: GestureDetector(
-          onTap: _toggleControls,
-          onDoubleTapDown: (details) {
-            if (_isLocked || _isInPipMode) return;
-            final screenWidth = MediaQuery.of(context).size.width;
-            if (details.globalPosition.dx < screenWidth / 2) {
-              _skipSeconds(false);
-            } else {
-              _skipSeconds(true);
-            }
-          },
-          onLongPressStart: (_) => _enable2xSpeed(),
-          onLongPressEnd: (_) => _restoreNormalSpeed(),
-          onVerticalDragUpdate: _onVerticalDrag,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // 1. Video Surface Playing in Authentic Natural Aspect Ratio
-              InteractiveViewer(
-                minScale: 1.0,
-                maxScale: 3.5,
-                panEnabled: !_isLocked && !_isInPipMode,
-                scaleEnabled: !_isLocked && !_isInPipMode,
-                child: _buildVideoSurface(screenSize),
-              ),
-
-              // 2. Integrated Brightness Dimmer Overlay
-              IgnorePointer(
-                child: Container(
-                  color: Colors.black.withOpacity((1.0 - _brightness).clamp(0.0, 0.85) * 0.7),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _exitPlayer();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          top: !_isLandscape,
+          bottom: !_isLandscape,
+          child: GestureDetector(
+            onTap: _toggleControls,
+            onDoubleTapDown: (details) {
+              if (_isLocked || _isInPipMode) return;
+              final screenWidth = MediaQuery.of(context).size.width;
+              if (details.globalPosition.dx < screenWidth / 2) {
+                _skipSeconds(false);
+              } else {
+                _skipSeconds(true);
+              }
+            },
+            onLongPressStart: (_) => _enable2xSpeed(),
+            onLongPressEnd: (_) => _restoreNormalSpeed(),
+            onVerticalDragStart: _onVerticalDragStart,
+            onVerticalDragUpdate: _onVerticalDrag,
+            onVerticalDragEnd: (_) => _onVerticalDragEnd(),
+            onVerticalDragCancel: _onVerticalDragEnd,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. Video Surface Playing in Authentic Natural Aspect Ratio
+                InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 3.5,
+                  panEnabled: !_isLocked && !_isInPipMode,
+                  scaleEnabled: !_isLocked && !_isInPipMode,
+                  child: _buildVideoSurface(screenSize),
                 ),
-              ),
 
               // 3. YouTube-Style Clean 2X Speed Badge
               if (_is2xActive)
@@ -886,7 +985,8 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                     ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -927,7 +1027,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
             tooltip: 'Back',
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _exitPlayer,
           ),
           if (_playlist.length > 1)
             IconButton(
