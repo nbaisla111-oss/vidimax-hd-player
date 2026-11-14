@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/music_controller.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/audio_artwork_widget.dart';
 import 'music_queue_bottom_sheet.dart';
 import 'now_playing_screen.dart';
 
@@ -63,15 +64,11 @@ class MiniMusicPlayer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   children: [
-                    // Album badge
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: AppTheme.accent(context),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.music_note_rounded, color: AppTheme.onAccent(context), size: 24),
+                    // Album artwork badge
+                    AudioArtworkWidget(
+                      audioPath: song.path,
+                      size: 42,
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     const SizedBox(width: 12),
 

@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../controllers/music_controller.dart';
 import '../../models/music_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/audio_artwork_widget.dart';
 import 'music_queue_bottom_sheet.dart';
 
 class NowPlayingScreen extends StatefulWidget {
@@ -202,11 +203,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           ),
                           child: Center(
                             child: Container(
-                              width: 110,
-                              height: 110,
+                              width: 196,
+                              height: 196,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: AppTheme.accent(context),
+                                border: Border.all(
+                                  color: isDark ? Colors.white24 : Colors.black26,
+                                  width: 2,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.45),
@@ -214,7 +218,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                   ),
                                 ],
                               ),
-                              child: Icon(Icons.music_note_rounded, color: AppTheme.onAccent(context), size: 54),
+                              child: AudioArtworkWidget(
+                                audioPath: song.path,
+                                size: 192,
+                                isCircle: true,
+                              ),
                             ),
                           ),
                         ),

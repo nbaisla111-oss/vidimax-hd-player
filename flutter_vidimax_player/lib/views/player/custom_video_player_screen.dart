@@ -57,6 +57,11 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
   double _pendingVolumeDelta = 0.0;
   int _lastSentVolumePercent = -1;
 
+  double? _nativeAspectRatio;
+  int? _nativeDisplayWidth;
+  int? _nativeDisplayHeight;
+  int _fitMode = 0; // 0: Original Fit, 1: Fill / Crop, 2: Stretch
+
   Timer? _hideControlsTimer;
   Timer? _indicatorTimer;
   Timer? _seekRippleTimer;
@@ -78,8 +83,29 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _currentIndex = widget.initialIndex;
 
     _systemChannel.setMethodCallHandler(_handleNativeCallback);
+    _unlockOrientationToAutoRotate();
     _loadInitialHardwareState();
     _initializeVideo();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final isNowLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      if (isNowLandscape != _isLandscape) {
+        setState(() => _isLandscape = isNowLandscape);
+        SystemChrome.setEnabledSystemUIMode(
+          isNowLandscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+        );
+      }
+    });
+  }
+
+  Future<void> _unlockOrientationToAutoRotate() async {
+    try {
+      await SystemChrome.setPreferredOrientations([]);
+    } catch (_) {}
+    try {
+      await _systemChannel.invokeMethod('setOrientationMode', {'mode': 'auto'});
+    } catch (_) {}
   }
 
   Future<void> _loadInitialHardwareState() async {
@@ -108,6 +134,21 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       }
       _loadInitialHardwareState();
     }
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isInPipMode) return;
+      final isNowLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+      if (isNowLandscape != _isLandscape) {
+        setState(() => _isLandscape = isNowLandscape);
+        SystemChrome.setEnabledSystemUIMode(
+          isNowLandscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+        );
+      }
+    });
   }
 
   Future<dynamic> _handleNativeCallback(MethodCall call) async {
@@ -146,8 +187,12 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
       final playing = _controller?.value.isPlaying ?? false;
       _lastPipPlaying = playing;
       final size = _controller?.value.size;
-      final w = (size != null && size.width > 0) ? size.width.round() : 16;
-      final h = (size != null && size.height > 0) ? size.height.round() : 9;
+      final w = (_nativeDisplayWidth != null && _nativeDisplayWidth! > 0)
+          ? _nativeDisplayWidth!
+          : ((size != null && size.width > 0) ? size.width.round() : 16);
+      final h = (_nativeDisplayHeight != null && _nativeDisplayHeight! > 0)
+          ? _nativeDisplayHeight!
+          : ((size != null && size.height > 0) ? size.height.round() : 9);
       await _systemChannel.invokeMethod('setPipPlayerState', {
         'active': active,
         'playing': playing,
@@ -161,8 +206,12 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     if (!_isInitialized || _controller == null) return;
     try {
       final size = _controller!.value.size;
-      final w = size.width > 0 ? size.width.round() : 16;
-      final h = size.height > 0 ? size.height.round() : 9;
+      final w = (_nativeDisplayWidth != null && _nativeDisplayWidth! > 0)
+          ? _nativeDisplayWidth!
+          : (size.width > 0 ? size.width.round() : 16);
+      final h = (_nativeDisplayHeight != null && _nativeDisplayHeight! > 0)
+          ? _nativeDisplayHeight!
+          : (size.height > 0 ? size.height.round() : 9);
       final entered = await _systemChannel.invokeMethod<bool>('enterPipMode', {
         'playing': _controller!.value.isPlaying,
         'width': w,
@@ -178,9 +227,34 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     }
   }
 
+  Future<void> _fetchNativeVideoMetadata(String path) async {
+    if (path.isEmpty || path.startsWith('http://') || path.startsWith('https://')) {
+      return;
+    }
+    try {
+      final meta = await _systemChannel.invokeMapMethod<String, dynamic>(
+        'getVideoMetadata',
+        {'path': path},
+      );
+      if (!mounted || meta == null) return;
+      final w = (meta['width'] as num?)?.toInt() ?? 0;
+      final h = (meta['height'] as num?)?.toInt() ?? 0;
+      if (w > 0 && h > 0) {
+        setState(() {
+          _nativeDisplayWidth = w;
+          _nativeDisplayHeight = h;
+          _nativeAspectRatio = w / h;
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _initializeVideo() async {
     _isInitialized = false;
     _isTransitioning = false;
+    _nativeAspectRatio = null;
+    _nativeDisplayWidth = null;
+    _nativeDisplayHeight = null;
     if (mounted) setState(() {});
 
     final videoOptions = VideoPlayerOptions(
@@ -200,7 +274,10 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
             );
 
       _controller = ctrl;
-      await ctrl.initialize();
+      await Future.wait([
+        ctrl.initialize(),
+        _fetchNativeVideoMetadata(_currentVideo.path),
+      ]);
       ctrl.addListener(_videoListener);
       await ctrl.setVolume(_isMuted ? 0.0 : 1.0);
       await ctrl.setPlaybackSpeed(_playbackSpeed);
@@ -362,23 +439,39 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _startHideTimer();
   }
 
-  void _toggleOrientation() {
+  Future<void> _toggleOrientation() async {
+    final targetLandscape = !_isLandscape;
     setState(() {
-      _isLandscape = !_isLandscape;
+      _isLandscape = targetLandscape;
     });
 
-    if (_isLandscape) {
-      SystemChrome.setPreferredOrientations([
+    if (targetLandscape) {
+      await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      try {
+        await _systemChannel.invokeMethod('setOrientationMode', {'mode': 'landscape'});
+      } catch (_) {}
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
-      SystemChrome.setPreferredOrientations([
+      await SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
       ]);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      try {
+        await _systemChannel.invokeMethod('setOrientationMode', {'mode': 'portrait'});
+      } catch (_) {}
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
+    _startHideTimer();
+  }
+
+  void _cycleFitMode() {
+    setState(() {
+      _fitMode = (_fitMode + 1) % 3;
+    });
+    const labels = ['Original Fit', 'Crop / Fill Screen', 'Stretch Full'];
+    _showToastNotification('Aspect: ${labels[_fitMode]}');
     _startHideTimer();
   }
 
@@ -727,7 +820,8 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     if (_hasCustomBrightness) {
       _resetHardwareBrightness();
     }
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations([]);
+    _systemChannel.invokeMethod('setOrientationMode', {'mode': 'auto'}).catchError((_) {});
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
@@ -1000,13 +1094,36 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
 
     final videoSize = _controller!.value.size;
     final bool hasValidDimensions = videoSize.width > 0 && videoSize.height > 0;
-    final double rawAspect = (hasValidDimensions && _controller!.value.aspectRatio > 0)
+    final double fallbackAspect = (hasValidDimensions && _controller!.value.aspectRatio > 0)
         ? _controller!.value.aspectRatio
         : (16 / 9);
+    final double effectiveAspect = (_nativeAspectRatio != null && _nativeAspectRatio! > 0)
+        ? _nativeAspectRatio!
+        : fallbackAspect;
+
+    if (_fitMode == 2) {
+      return SizedBox.expand(
+        child: VideoPlayer(_controller!),
+      );
+    }
+
+    if (_fitMode == 1) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox(
+            width: 1000 * effectiveAspect,
+            height: 1000,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
 
     return Center(
       child: AspectRatio(
-        aspectRatio: rawAspect,
+        aspectRatio: effectiveAspect,
         child: VideoPlayer(_controller!),
       ),
     );
@@ -1185,6 +1302,15 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                       ),
                     ),
                   ),
+                ),
+                const SizedBox(width: 8),
+
+                // Aspect Ratio / Screen Fit Mode
+                _buildMiniActionIcon(
+                  icon: Icons.aspect_ratio_rounded,
+                  isActive: _fitMode != 0,
+                  tooltip: 'Aspect Ratio / Fit Mode',
+                  onTap: _cycleFitMode,
                 ),
                 const SizedBox(width: 8),
 

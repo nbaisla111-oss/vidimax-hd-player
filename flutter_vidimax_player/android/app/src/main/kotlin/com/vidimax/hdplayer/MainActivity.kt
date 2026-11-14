@@ -4,21 +4,33 @@ import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.media.AudioManager
+import android.media.MediaExtractor
+import android.media.MediaFormat
+import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Rational
+import android.util.Size
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     companion object {
@@ -35,6 +47,7 @@ class MainActivity : FlutterActivity() {
     private var isVideoPlaying = false
     private var lastAspectWidth = 16
     private var lastAspectHeight = 9
+    private val mediaWorker = Executors.newCachedThreadPool()
 
     private val pipActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -74,6 +87,10 @@ class MainActivity : FlutterActivity() {
     override fun onDestroy() {
         try {
             unregisterReceiver(pipActionReceiver)
+        } catch (_: Exception) {
+        }
+        try {
+            mediaWorker.shutdownNow()
         } catch (_: Exception) {
         }
         super.onDestroy()
@@ -127,6 +144,37 @@ class MainActivity : FlutterActivity() {
                     val actual = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toDouble() / max.toDouble()
                     result.success(actual)
                 }
+                "setOrientationMode" -> {
+                    val mode = call.argument<String>("mode") ?: "auto"
+                    requestedOrientation = when (mode) {
+                        "landscape" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        "portrait" -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                        else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    }
+                    result.success(true)
+                }
+                "getAudioArtwork" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.success(null)
+                        return@setMethodCallHandler
+                    }
+                    mediaWorker.execute {
+                        val artBytes = extractAudioArtworkBytes(path)
+                        runOnUiThread { result.success(artBytes) }
+                    }
+                }
+                "getVideoMetadata" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.success(null)
+                        return@setMethodCallHandler
+                    }
+                    mediaWorker.execute {
+                        val meta = extractVideoDisplayMetadata(path)
+                        runOnUiThread { result.success(meta) }
+                    }
+                }
                 "setPipPlayerState" -> {
                     isPlayerActive = call.argument<Boolean>("active") ?: false
                     isVideoPlaying = call.argument<Boolean>("playing") ?: false
@@ -153,6 +201,186 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun extractAudioArtworkBytes(path: String): ByteArray? {
+        val file = File(path)
+        if (!file.exists()) return null
+
+        var rawBytes: ByteArray? = null
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(path)
+            rawBytes = retriever.embeddedPicture
+        } catch (_: Exception) {
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {
+            }
+        }
+
+        // Fallback to MediaStore thumbnail if embeddedPicture wasn't directly returned
+        if (rawBytes == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val projection = arrayOf(
+                    MediaStore.Audio.Media._ID,
+                    MediaStore.Audio.Media.ALBUM_ID
+                )
+                @Suppress("DEPRECATION")
+                val selection = "${MediaStore.Audio.Media.DATA} = ?"
+                contentResolver.query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
+                    arrayOf(path),
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val audioId = cursor.getLong(0)
+                        val albumId = cursor.getLong(1)
+                        val audioUri = ContentUris.withAppendedId(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            audioId
+                        )
+                        var bmp: Bitmap? = try {
+                            contentResolver.loadThumbnail(audioUri, Size(320, 320), null)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        if (bmp == null && albumId > 0) {
+                            val albumUri = ContentUris.withAppendedId(
+                                MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                                albumId
+                            )
+                            bmp = try {
+                                contentResolver.loadThumbnail(albumUri, Size(320, 320), null)
+                            } catch (_: Exception) {
+                                null
+                            }
+                        }
+                        if (bmp != null) {
+                            val baos = ByteArrayOutputStream()
+                            bmp.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                            bmp.recycle()
+                            return baos.toByteArray()
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+
+        if (rawBytes == null) return null
+
+        // Downscale oversized embedded covers (e.g. >90KB) so scrolling dozens of tracks stays smooth
+        if (rawBytes.size <= 90 * 1024) {
+            return rawBytes
+        }
+
+        return try {
+            val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, boundsOpts)
+            val maxDim = maxOf(boundsOpts.outWidth, boundsOpts.outHeight)
+            var sampleSize = 1
+            while (maxDim / sampleSize > 512) {
+                sampleSize *= 2
+            }
+            val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+            val bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, decodeOpts)
+            if (bmp != null) {
+                val baos = ByteArrayOutputStream()
+                bmp.compress(Bitmap.CompressFormat.JPEG, 85, baos)
+                bmp.recycle()
+                baos.toByteArray()
+            } else {
+                rawBytes
+            }
+        } catch (_: Exception) {
+            rawBytes
+        }
+    }
+
+    private fun extractVideoDisplayMetadata(path: String): Map<String, Int>? {
+        val file = File(path)
+        if (!file.exists()) return null
+
+        var codedW = 0
+        var codedH = 0
+        var rotation = 0
+
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(path)
+            codedW = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            codedH = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        } catch (_: Exception) {
+        } finally {
+            try {
+                retriever.release()
+            } catch (_: Exception) {
+            }
+        }
+
+        // Fallback & pixel-aspect-ratio (SAR) inspection via MediaExtractor
+        var sarNum = 1
+        var sarDen = 1
+        val extractor = MediaExtractor()
+        try {
+            extractor.setDataSource(path)
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: ""
+                if (mime.startsWith("video/")) {
+                    if (codedW <= 0 && format.containsKey(MediaFormat.KEY_WIDTH)) {
+                        codedW = format.getInteger(MediaFormat.KEY_WIDTH)
+                    }
+                    if (codedH <= 0 && format.containsKey(MediaFormat.KEY_HEIGHT)) {
+                        codedH = format.getInteger(MediaFormat.KEY_HEIGHT)
+                    }
+                    if (rotation == 0 && format.containsKey("rotation-degrees")) {
+                        rotation = format.getInteger("rotation-degrees")
+                    }
+                    if (format.containsKey("sar-width") && format.containsKey("sar-height")) {
+                        val sw = format.getInteger("sar-width")
+                        val sh = format.getInteger("sar-height")
+                        if (sw > 0 && sh > 0) {
+                            sarNum = sw
+                            sarDen = sh
+                        }
+                    }
+                    break
+                }
+            }
+        } catch (_: Exception) {
+        } finally {
+            try {
+                extractor.release()
+            } catch (_: Exception) {
+            }
+        }
+
+        if (codedW <= 0 || codedH <= 0) return null
+
+        // Apply pixel aspect ratio before orientation rotation
+        val sarAdjustedW = if (sarNum != sarDen) {
+            Math.round(codedW.toDouble() * sarNum.toDouble() / sarDen.toDouble()).toInt().coerceAtLeast(1)
+        } else {
+            codedW
+        }
+
+        val normRot = ((rotation % 360) + 360) % 360
+        val displayW = if (normRot == 90 || normRot == 270) codedH else sarAdjustedW
+        val displayH = if (normRot == 90 || normRot == 270) sarAdjustedW else codedH
+
+        return mapOf(
+            "width" to displayW,
+            "height" to displayH,
+            "codedWidth" to codedW,
+            "codedHeight" to codedH,
+            "rotation" to normRot
+        )
     }
 
     override fun onUserLeaveHint() {

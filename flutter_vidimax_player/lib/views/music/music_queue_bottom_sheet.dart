@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/music_controller.dart';
 import '../../models/music_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/audio_artwork_widget.dart';
 
 class MusicQueueBottomSheet extends StatelessWidget {
   const MusicQueueBottomSheet({super.key});
@@ -135,34 +136,12 @@ class MusicQueueBottomSheet extends StatelessWidget {
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                              leading: SizedBox(
-                                width: 36,
-                                height: 36,
-                                child: Center(
-                                  child: isCurrent
-                                      ? Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.accent(context),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            musicCtrl.isPlaying
-                                                ? Icons.graphic_eq_rounded
-                                                : Icons.play_arrow_rounded,
-                                            color: AppTheme.onAccent(context),
-                                            size: 16,
-                                          ),
-                                        )
-                                      : Text(
-                                          '${index + 1}',
-                                          style: TextStyle(
-                                            color: AppTheme.textMuted(context),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                ),
+                              leading: AudioArtworkWidget(
+                                audioPath: song.path,
+                                size: 42,
+                                borderRadius: BorderRadius.circular(10),
+                                isCurrent: isCurrent,
+                                isPlaying: musicCtrl.isPlaying,
                               ),
                               title: Text(
                                 song.title,

@@ -5,6 +5,7 @@ import '../../controllers/music_controller.dart';
 import '../../controllers/vault_controller.dart';
 import '../../models/music_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/audio_artwork_widget.dart';
 import 'mini_music_player.dart';
 
 class MusicScreen extends StatefulWidget {
@@ -264,22 +265,12 @@ class _MusicScreenState extends State<MusicScreen> with SingleTickerProviderStat
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: isCurrent
-                ? AppTheme.accent(context)
-                : (isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            isCurrent
-                ? (musicCtrl.isPlaying ? Icons.equalizer_rounded : Icons.play_arrow_rounded)
-                : Icons.music_note_rounded,
-            color: isCurrent ? AppTheme.onAccent(context) : AppTheme.textPrimary(context),
-            size: 24,
-          ),
+        leading: AudioArtworkWidget(
+          audioPath: song.path,
+          size: 46,
+          borderRadius: BorderRadius.circular(10),
+          isCurrent: isCurrent,
+          isPlaying: musicCtrl.isPlaying,
         ),
         title: Text(
           song.title,

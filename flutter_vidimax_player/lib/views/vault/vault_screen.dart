@@ -8,6 +8,7 @@ import '../../models/video_model.dart';
 import '../../services/vault_encryption_service.dart';
 import '../../utils/app_theme.dart';
 import '../player/custom_video_player_screen.dart';
+import '../../widgets/audio_artwork_widget.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 import 'vault_recovery_screen.dart';
 
@@ -929,14 +930,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                           final song = songs[idx];
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            leading: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppTheme.accent(ctx).withOpacity(0.14),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Icons.audiotrack_rounded, color: AppTheme.accent(ctx), size: 22),
+                            leading: AudioArtworkWidget(
+                              audioPath: song.path,
+                              size: 44,
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             title: Text(
                               song.title,
