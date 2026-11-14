@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
+import '../../controllers/music_controller.dart';
 import '../../models/video_model.dart';
+import '../../services/system_controls_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 
@@ -27,7 +30,8 @@ class CustomVideoPlayerScreen extends StatefulWidget {
 }
 
 class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with WidgetsBindingObserver {
-  static const MethodChannel _systemChannel = MethodChannel('com.vidimax.player/system_controls');
+  final SystemControlsService _systemControls = SystemControlsService();
+  MethodChannel get _systemChannel => _systemControls.channel;
 
   VideoPlayerController? _controller;
   late int _currentIndex;
@@ -82,13 +86,21 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _playlist = widget.playlist ?? [widget.video];
     _currentIndex = widget.initialIndex;
 
-    _systemChannel.setMethodCallHandler(_handleNativeCallback);
+    _systemControls.setVideoHandlers(
+      onPipModeChanged: _handlePipModeChanged,
+      onPipAction: _handlePipOrMediaAction,
+      onPlayerBackgrounded: _handlePlayerBackgrounded,
+      onMediaAction: _handlePipOrMediaAction,
+    );
     _unlockOrientationToAutoRotate();
     _loadInitialHardwareState();
     _initializeVideo();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      try {
+        Provider.of<MusicController>(context, listen: false).pauseForVideo();
+      } catch (_) {}
       final isNowLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
       if (isNowLandscape != _isLandscape) {
         setState(() => _isLandscape = isNowLandscape);
@@ -151,34 +163,57 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     });
   }
 
-  Future<dynamic> _handleNativeCallback(MethodCall call) async {
+  void _handlePipModeChanged(bool isPip) {
     if (!mounted) return;
-    if (call.method == 'onPipModeChanged') {
-      final isPip = call.arguments as bool? ?? false;
-      setState(() {
-        _isInPipMode = isPip;
-        if (!isPip) {
-          _showControls = true;
-        }
-      });
+    setState(() {
+      _isInPipMode = isPip;
       if (!isPip) {
-        _startHideTimer();
+        _showControls = true;
       }
-    } else if (call.method == 'onPipAction') {
-      final action = call.arguments as String? ?? '';
-      if (action == 'prev') {
-        _playPreviousVideo();
-      } else if (action == 'next') {
-        _playNextVideo();
-      } else if (action == 'toggle') {
+    });
+    if (!isPip) {
+      _startHideTimer();
+    }
+  }
+
+  void _handlePipOrMediaAction(String action) {
+    if (!mounted) return;
+    if (action == 'prev') {
+      _playPreviousVideo();
+    } else if (action == 'next') {
+      _playNextVideo();
+    } else if (action == 'toggle') {
+      _togglePlayPause();
+    } else if (action == 'play') {
+      if (!(_controller?.value.isPlaying ?? false)) {
         _togglePlayPause();
       }
-    } else if (call.method == 'onPlayerBackgrounded') {
+    } else if (action == 'pause') {
+      if (_controller?.value.isPlaying ?? false) {
+        _togglePlayPause();
+      }
+    } else if (action == 'stop') {
       if (_controller?.value.isPlaying ?? false) {
         _controller?.pause();
         setState(() {});
         _syncPipPlayerState(active: true);
       }
+      _systemControls.clearMediaNotification();
+    } else if (action.startsWith('seek:')) {
+      final ms = int.tryParse(action.substring(5));
+      if (ms != null) {
+        _controller?.seekTo(Duration(milliseconds: ms));
+        _syncPipPlayerState(active: true);
+      }
+    }
+  }
+
+  void _handlePlayerBackgrounded() {
+    if (!mounted) return;
+    if (_controller?.value.isPlaying ?? false) {
+      _controller?.pause();
+      setState(() {});
+      _syncPipPlayerState(active: true);
     }
   }
 
@@ -199,6 +234,18 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
         'width': w,
         'height': h,
       });
+
+      if (active && _isInitialized && _controller != null) {
+        await _systemControls.updateMediaNotification(
+          title: _currentVideo.title,
+          subtitle: '${_currentVideo.folderName} · ${_currentVideo.resolution}',
+          path: _currentVideo.path,
+          mediaType: 'video',
+          isPlaying: playing,
+          durationMs: _controller!.value.duration.inMilliseconds,
+          positionMs: _controller!.value.position.inMilliseconds,
+        );
+      }
     } catch (_) {}
   }
 
@@ -814,7 +861,8 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
     _seekRippleTimer?.cancel();
     _toastTimer?.cancel();
     _syncPipPlayerState(active: false);
-    _systemChannel.setMethodCallHandler(null);
+    _systemControls.clearVideoHandlers();
+    _systemControls.clearMediaNotification();
     _controller?.removeListener(_videoListener);
     _controller?.dispose();
     if (_hasCustomBrightness) {

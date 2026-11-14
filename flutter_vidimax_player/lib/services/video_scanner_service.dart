@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/video_model.dart';
 import '../models/folder_model.dart';
+import 'system_controls_service.dart';
 
 class VideoScannerService {
   static final VideoScannerService _instance = VideoScannerService._internal();
@@ -15,7 +16,7 @@ class VideoScannerService {
     '.mp4', '.mkv', '.webm', '.avi', '.mov', '.flv', '.3gp', '.ts', '.m4v'
   ];
 
-  static const String _cacheKey = 'vidimax_cached_videos_v1';
+  static const String _cacheKey = 'vidimax_cached_videos_v2';
 
   /// Load cached videos from SharedPreferences for instant 0ms app launch
   Future<List<VideoModel>> getCachedVideos() async {
@@ -30,7 +31,7 @@ class VideoScannerService {
             title: item['title'] ?? '',
             path: item['path'] ?? '',
             folderName: item['folderName'] ?? 'Videos',
-            durationMs: item['durationMs'] ?? 60000,
+            durationMs: item['durationMs'] ?? 0,
             sizeBytes: item['sizeBytes'] ?? 0,
             dateModified: item['dateModified'] ?? 0,
             thumbnailPath: item['thumbnailPath'],
@@ -112,6 +113,27 @@ class VideoScannerService {
       }
     }
 
+    // Hydrate real durations and resolutions in one native batch call
+    if (videos.isNotEmpty) {
+      final mediaInfoMap = await SystemControlsService().getVideosMediaInfo(
+        videos.map((v) => v.path).toList(),
+      );
+      if (mediaInfoMap.isNotEmpty) {
+        for (int i = 0; i < videos.length; i++) {
+          final v = videos[i];
+          final info = mediaInfoMap[v.path];
+          if (info != null) {
+            final durMs = (info['durationMs'] as num?)?.toInt() ?? 0;
+            final res = info['resolution'] as String?;
+            videos[i] = v.copyWith(
+              durationMs: durMs > 0 ? durMs : v.durationMs,
+              resolution: (res != null && res.isNotEmpty) ? res : v.resolution,
+            );
+          }
+        }
+      }
+    }
+
     // Sort by most recently modified
     videos.sort((a, b) => b.dateModified.compareTo(a.dateModified));
 
@@ -140,11 +162,11 @@ class VideoScannerService {
           title: p.basenameWithoutExtension(fileName),
           path: file.path,
           folderName: folderName.isEmpty ? 'Root' : folderName,
-          durationMs: 60000,
+          durationMs: 0,
           sizeBytes: stat.size,
           dateModified: stat.modified.millisecondsSinceEpoch,
           thumbnailPath: null,
-          resolution: '1080p FHD',
+          resolution: 'HD',
         ),
       );
     } catch (_) {}

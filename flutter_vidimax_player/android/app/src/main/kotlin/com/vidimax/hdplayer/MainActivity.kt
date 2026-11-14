@@ -57,18 +57,35 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private val mediaActionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != MediaPlaybackService.ACTION_MEDIA_EVENT) return
+            val event = intent.getStringExtra(MediaPlaybackService.EXTRA_EVENT) ?: return
+            methodChannel?.invokeMethod("onMediaAction", event)
+        }
+    }
+
     override fun getRenderMode(): RenderMode {
         return RenderMode.texture
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val filter = IntentFilter(ACTION_PIP_CONTROL)
+        MediaPlaybackService.actionListener = { event ->
+            runOnUiThread {
+                methodChannel?.invokeMethod("onMediaAction", event)
+            }
+        }
+        val pipFilter = IntentFilter(ACTION_PIP_CONTROL)
+        val mediaFilter = IntentFilter(MediaPlaybackService.ACTION_MEDIA_EVENT)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(pipActionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(pipActionReceiver, pipFilter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(mediaActionReceiver, mediaFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(pipActionReceiver, filter)
+            registerReceiver(pipActionReceiver, pipFilter)
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(mediaActionReceiver, mediaFilter)
         }
     }
 
@@ -85,8 +102,13 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        MediaPlaybackService.actionListener = null
         try {
             unregisterReceiver(pipActionReceiver)
+        } catch (_: Exception) {
+        }
+        try {
+            unregisterReceiver(mediaActionReceiver)
         } catch (_: Exception) {
         }
         try {
@@ -174,6 +196,57 @@ class MainActivity : FlutterActivity() {
                         val meta = extractVideoDisplayMetadata(path)
                         runOnUiThread { result.success(meta) }
                     }
+                }
+                "getVideosMediaInfo" -> {
+                    val paths = call.argument<List<String>>("paths") ?: emptyList()
+                    mediaWorker.execute {
+                        val infoMap = extractVideosMediaInfoBatch(paths)
+                        runOnUiThread { result.success(infoMap) }
+                    }
+                }
+                "getAudiosMediaInfo" -> {
+                    val paths = call.argument<List<String>>("paths") ?: emptyList()
+                    mediaWorker.execute {
+                        val infoMap = extractAudiosMediaInfoBatch(paths)
+                        runOnUiThread { result.success(infoMap) }
+                    }
+                }
+                "updateMediaNotification" -> {
+                    val title = call.argument<String>("title") ?: "Rox Player"
+                    val subtitle = call.argument<String>("subtitle") ?: "Playing media"
+                    val path = call.argument<String>("path") ?: ""
+                    val mediaType = call.argument<String>("mediaType") ?: "audio"
+                    val isPlaying = call.argument<Boolean>("isPlaying") ?: false
+                    val durationMs = (call.argument<Number>("durationMs"))?.toLong() ?: 0L
+                    val positionMs = (call.argument<Number>("positionMs"))?.toLong() ?: 0L
+
+                    val serviceIntent = Intent(this, MediaPlaybackService::class.java).apply {
+                        action = MediaPlaybackService.ACTION_UPDATE
+                        putExtra(MediaPlaybackService.EXTRA_TITLE, title)
+                        putExtra(MediaPlaybackService.EXTRA_SUBTITLE, subtitle)
+                        putExtra(MediaPlaybackService.EXTRA_PATH, path)
+                        putExtra(MediaPlaybackService.EXTRA_MEDIA_TYPE, mediaType)
+                        putExtra(MediaPlaybackService.EXTRA_IS_PLAYING, isPlaying)
+                        putExtra(MediaPlaybackService.EXTRA_DURATION_MS, durationMs)
+                        putExtra(MediaPlaybackService.EXTRA_POSITION_MS, positionMs)
+                    }
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(serviceIntent)
+                        } else {
+                            startService(serviceIntent)
+                        }
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+                "clearMediaNotification" -> {
+                    try {
+                        stopService(Intent(this, MediaPlaybackService::class.java))
+                    } catch (_: Exception) {
+                    }
+                    result.success(true)
                 }
                 "setPipPlayerState" -> {
                     isPlayerActive = call.argument<Boolean>("active") ?: false
@@ -381,6 +454,192 @@ class MainActivity : FlutterActivity() {
             "codedHeight" to codedH,
             "rotation" to normRot
         )
+    }
+
+    private fun formatResolutionLabel(w: Int, h: Int): String {
+        if (w <= 0 || h <= 0) return "HD"
+        val minDim = minOf(w, h)
+        val maxDim = maxOf(w, h)
+        return when {
+            minDim >= 2160 || maxDim >= 3840 -> "4K UHD"
+            minDim >= 1440 || maxDim >= 2560 -> "2K QHD"
+            minDim >= 1080 || maxDim >= 1920 -> "1080p FHD"
+            minDim >= 720 || maxDim >= 1280 -> "720p HD"
+            minDim >= 480 || maxDim >= 854 -> "480p SD"
+            minDim >= 360 -> "360p"
+            else -> "${w}x${h}"
+        }
+    }
+
+    private fun extractVideosMediaInfoBatch(paths: List<String>): Map<String, Map<String, Any>> {
+        val resultMap = HashMap<String, Map<String, Any>>(paths.size)
+        if (paths.isEmpty()) return resultMap
+
+        data class StoreVideoMeta(val durationMs: Long, val width: Int, val height: Int)
+        val storeMap = HashMap<String, StoreVideoMeta>()
+
+        try {
+            @Suppress("DEPRECATION")
+            val projection = arrayOf(
+                MediaStore.Video.Media.DATA,
+                MediaStore.Video.Media.DURATION,
+                MediaStore.Video.Media.WIDTH,
+                MediaStore.Video.Media.HEIGHT
+            )
+            contentResolver.query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val dataIdx = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                val durIdx = cursor.getColumnIndex(MediaStore.Video.Media.DURATION)
+                val wIdx = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
+                val hIdx = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+                while (cursor.moveToNext()) {
+                    val filePath = if (dataIdx >= 0) cursor.getString(dataIdx) else null
+                    if (!filePath.isNullOrBlank()) {
+                        val dur = if (durIdx >= 0) cursor.getLong(durIdx) else 0L
+                        val w = if (wIdx >= 0) cursor.getInt(wIdx) else 0
+                        val h = if (hIdx >= 0) cursor.getInt(hIdx) else 0
+                        storeMap[filePath] = StoreVideoMeta(dur, w, h)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        for (path in paths) {
+            val cached = storeMap[path]
+            var durMs = cached?.durationMs ?: 0L
+            var w = cached?.width ?: 0
+            var h = cached?.height ?: 0
+
+            if (durMs <= 0L || w <= 0 || h <= 0) {
+                val file = File(path)
+                if (file.exists()) {
+                    val retriever = MediaMetadataRetriever()
+                    try {
+                        retriever.setDataSource(path)
+                        if (durMs <= 0L) {
+                            durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                ?.toLongOrNull() ?: 0L
+                        }
+                        if (w <= 0 || h <= 0) {
+                            val rw = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                                ?.toIntOrNull() ?: 0
+                            val rh = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                                ?.toIntOrNull() ?: 0
+                            val rot = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                                ?.toIntOrNull() ?: 0
+                            if (rw > 0 && rh > 0) {
+                                val normRot = ((rot % 360) + 360) % 360
+                                w = if (normRot == 90 || normRot == 270) rh else rw
+                                h = if (normRot == 90 || normRot == 270) rw else rh
+                            }
+                        }
+                    } catch (_: Exception) {
+                    } finally {
+                        try {
+                            retriever.release()
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+
+            resultMap[path] = mapOf(
+                "durationMs" to durMs.coerceAtLeast(0L),
+                "width" to w.coerceAtLeast(0),
+                "height" to h.coerceAtLeast(0),
+                "resolution" to formatResolutionLabel(w, h)
+            )
+        }
+
+        return resultMap
+    }
+
+    private fun extractAudiosMediaInfoBatch(paths: List<String>): Map<String, Map<String, Any>> {
+        val resultMap = HashMap<String, Map<String, Any>>(paths.size)
+        if (paths.isEmpty()) return resultMap
+
+        data class StoreAudioMeta(val durationMs: Long, val artist: String, val album: String)
+        val storeMap = HashMap<String, StoreAudioMeta>()
+
+        try {
+            @Suppress("DEPRECATION")
+            val projection = arrayOf(
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM
+            )
+            contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val dataIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                val durIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val artIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val albIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                while (cursor.moveToNext()) {
+                    val filePath = if (dataIdx >= 0) cursor.getString(dataIdx) else null
+                    if (!filePath.isNullOrBlank()) {
+                        val dur = if (durIdx >= 0) cursor.getLong(durIdx) else 0L
+                        val artist = if (artIdx >= 0) (cursor.getString(artIdx) ?: "") else ""
+                        val album = if (albIdx >= 0) (cursor.getString(albIdx) ?: "") else ""
+                        storeMap[filePath] = StoreAudioMeta(dur, artist, album)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        for (path in paths) {
+            val cached = storeMap[path]
+            var durMs = cached?.durationMs ?: 0L
+            var artist = cached?.artist ?: ""
+            var album = cached?.album ?: ""
+
+            if (durMs <= 0L) {
+                val file = File(path)
+                if (file.exists()) {
+                    val retriever = MediaMetadataRetriever()
+                    try {
+                        retriever.setDataSource(path)
+                        durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                            ?.toLongOrNull() ?: 0L
+                        if (artist.isBlank() || artist == "<unknown>") {
+                            artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: ""
+                        }
+                        if (album.isBlank() || album == "<unknown>") {
+                            album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: ""
+                        }
+                    } catch (_: Exception) {
+                    } finally {
+                        try {
+                            retriever.release()
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+
+            if (artist == "<unknown>") artist = ""
+            if (album == "<unknown>") album = ""
+
+            resultMap[path] = mapOf(
+                "durationMs" to durMs.coerceAtLeast(0L),
+                "artist" to artist.trim(),
+                "album" to album.trim()
+            )
+        }
+
+        return resultMap
     }
 
     override fun onUserLeaveHint() {

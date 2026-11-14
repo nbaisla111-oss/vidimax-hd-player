@@ -85,4 +85,21 @@ class PermissionService {
     }
     return await Permission.storage.isGranted;
   }
+
+  /// Request notification permission gracefully on Android 13+ for lock screen & shade controls
+  Future<bool> requestNotificationPermission() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      if (androidInfo.version.sdkInt >= 33) {
+        final status = await Permission.notification.status;
+        if (!status.isGranted && !status.isPermanentlyDenied) {
+          final result = await Permission.notification.request();
+          return result.isGranted;
+        }
+        return status.isGranted;
+      }
+    } catch (_) {}
+    return true;
+  }
 }

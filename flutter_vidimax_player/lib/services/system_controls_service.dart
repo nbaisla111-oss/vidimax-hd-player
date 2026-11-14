@@ -1,0 +1,137 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+class SystemControlsService {
+  static final SystemControlsService _instance = SystemControlsService._internal();
+  factory SystemControlsService() => _instance;
+
+  static const MethodChannel _channel = MethodChannel('com.vidimax.player/system_controls');
+
+  void Function(String action)? _musicMediaActionHandler;
+
+  void Function(bool isPip)? _onPipModeChanged;
+  void Function(String action)? _onPipAction;
+  VoidCallback? _onPlayerBackgrounded;
+  void Function(String action)? _videoMediaActionHandler;
+
+  SystemControlsService._internal() {
+    _channel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  MethodChannel get channel => _channel;
+
+  void setMusicMediaActionHandler(void Function(String action)? handler) {
+    _musicMediaActionHandler = handler;
+  }
+
+  void setVideoHandlers({
+    void Function(bool isPip)? onPipModeChanged,
+    void Function(String action)? onPipAction,
+    VoidCallback? onPlayerBackgrounded,
+    void Function(String action)? onMediaAction,
+  }) {
+    _onPipModeChanged = onPipModeChanged;
+    _onPipAction = onPipAction;
+    _onPlayerBackgrounded = onPlayerBackgrounded;
+    _videoMediaActionHandler = onMediaAction;
+  }
+
+  void clearVideoHandlers() {
+    _onPipModeChanged = null;
+    _onPipAction = null;
+    _onPlayerBackgrounded = null;
+    _videoMediaActionHandler = null;
+  }
+
+  Future<dynamic> _handleMethodCall(MethodCall call) async {
+    switch (call.method) {
+      case 'onPipModeChanged':
+        final isPip = call.arguments as bool? ?? false;
+        _onPipModeChanged?.call(isPip);
+        break;
+      case 'onPipAction':
+        final action = call.arguments as String? ?? '';
+        _onPipAction?.call(action);
+        break;
+      case 'onPlayerBackgrounded':
+        _onPlayerBackgrounded?.call();
+        break;
+      case 'onMediaAction':
+        final action = call.arguments as String? ?? '';
+        if (_videoMediaActionHandler != null) {
+          _videoMediaActionHandler?.call(action);
+        } else {
+          _musicMediaActionHandler?.call(action);
+        }
+        break;
+    }
+  }
+
+  Future<Map<String, Map<String, dynamic>>> getVideosMediaInfo(List<String> paths) async {
+    if (paths.isEmpty) return {};
+    try {
+      final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
+        'getVideosMediaInfo',
+        {'paths': paths},
+      );
+      if (raw == null) return {};
+      final Map<String, Map<String, dynamic>> parsed = {};
+      raw.forEach((key, value) {
+        if (key is String && value is Map) {
+          parsed[key] = Map<String, dynamic>.from(value);
+        }
+      });
+      return parsed;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<Map<String, Map<String, dynamic>>> getAudiosMediaInfo(List<String> paths) async {
+    if (paths.isEmpty) return {};
+    try {
+      final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
+        'getAudiosMediaInfo',
+        {'paths': paths},
+      );
+      if (raw == null) return {};
+      final Map<String, Map<String, dynamic>> parsed = {};
+      raw.forEach((key, value) {
+        if (key is String && value is Map) {
+          parsed[key] = Map<String, dynamic>.from(value);
+        }
+      });
+      return parsed;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> updateMediaNotification({
+    required String title,
+    required String subtitle,
+    required String path,
+    required String mediaType,
+    required bool isPlaying,
+    required int durationMs,
+    required int positionMs,
+  }) async {
+    try {
+      await _channel.invokeMethod('updateMediaNotification', {
+        'title': title,
+        'subtitle': subtitle,
+        'path': path,
+        'mediaType': mediaType,
+        'isPlaying': isPlaying,
+        'durationMs': durationMs,
+        'positionMs': positionMs,
+      });
+    } catch (_) {}
+  }
+
+  Future<void> clearMediaNotification() async {
+    try {
+      await _channel.invokeMethod('clearMediaNotification');
+    } catch (_) {}
+  }
+}

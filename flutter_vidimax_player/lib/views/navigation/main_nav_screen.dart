@@ -43,34 +43,34 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
           Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0E0E11) : const Color(0xFFFFFFFF),
+              color: isDark ? const Color(0xFF0B0B0E) : const Color(0xFFFFFFFF),
               border: Border(
                 top: BorderSide(
-                  color: isDark ? const Color(0xFF3A3A42) : const Color(0xFFCBD5E1),
-                  width: 1.4,
+                  color: isDark ? const Color(0xFF232329) : const Color(0xFFE4E4E7),
+                  width: 0.9,
                 ),
               ),
               boxShadow: [
                 BoxShadow(
                   color: isDark
-                      ? Colors.black.withOpacity(0.65)
-                      : Colors.black.withOpacity(0.12),
-                  blurRadius: 18,
-                  offset: const Offset(0, -4),
+                      ? Colors.black.withOpacity(0.55)
+                      : Colors.black.withOpacity(0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, -3),
                 ),
               ],
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildNavItem(0, Icons.video_collection_rounded, 'Videos'),
-                    _buildNavItem(1, Icons.music_note_rounded, 'Music'),
+                    _buildNavItem(0, Icons.video_collection_rounded, Icons.video_collection_outlined, 'Videos'),
+                    _buildNavItem(1, Icons.music_note_rounded, Icons.music_note_outlined, 'Music'),
                     _buildStatusNavItem(2, 'Status'),
-                    _buildNavItem(3, Icons.handyman_rounded, 'Tools'),
-                    _buildNavItem(4, Icons.settings_rounded, 'Settings'),
+                    _buildNavItem(3, Icons.handyman_rounded, Icons.handyman_outlined, 'Tools'),
+                    _buildNavItem(4, Icons.settings_rounded, Icons.settings_outlined, 'Settings'),
                   ],
                 ),
               ),
@@ -81,40 +81,41 @@ class _MainNavScreenState extends State<MainNavScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(int index, IconData activeIcon, IconData inactiveIcon, String label) {
     final isSelected = _currentIndex == index;
     final isDark = AppTheme.isDark(context);
 
-    // Rich, bold high-contrast colors ("gadha") so tabs never look faded
-    final selectedBg = isDark ? Colors.white : const Color(0xFF09090B);
-    final selectedFg = isDark ? const Color(0xFF09090B) : Colors.white;
-    final unselectedFg = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF09090B);
+    final activeColor = isDark ? Colors.white : const Color(0xFF09090B);
+    final inactiveColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF52525B);
+    final pillBg = isSelected
+        ? (isDark ? Colors.white.withOpacity(0.16) : const Color(0xFF09090B).withOpacity(0.10))
+        : Colors.transparent;
 
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _currentIndex = index),
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 2.5),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? selectedBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? selectedBg
-                  : (isDark ? Colors.white12 : Colors.black12),
-              width: 1.2,
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: isSelected ? 24 : 23,
-                color: isSelected ? selectedFg : unselectedFg,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 52,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: pillBg,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Center(
+                  child: Icon(
+                    isSelected ? activeIcon : inactiveIcon,
+                    size: 22,
+                    color: isSelected ? activeColor : inactiveColor,
+                  ),
+                ),
               ),
               const SizedBox(height: 3),
               Text(
@@ -122,9 +123,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                  color: isSelected ? selectedFg : unselectedFg,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? activeColor : inactiveColor,
                   letterSpacing: 0.1,
                 ),
               ),
@@ -135,50 +136,51 @@ class _MainNavScreenState extends State<MainNavScreen> {
     );
   }
 
-  /// Custom WhatsApp-style Status Saver tab icon:
-  /// Segmented Status ring + bold downward save arrow (no trademark/copyright copy)
+  /// Custom WhatsApp-style Status Saver tab icon inside sleek unified nav item:
+  /// Segmented Status ring + crisp downward save arrow (no boxy container border)
   Widget _buildStatusNavItem(int index, String label) {
     final isSelected = _currentIndex == index;
     final isDark = AppTheme.isDark(context);
 
-    final selectedBg = isDark ? Colors.white : const Color(0xFF09090B);
-    final selectedFg = isDark ? const Color(0xFF09090B) : Colors.white;
-    final unselectedFg = isDark ? const Color(0xFFF4F4F5) : const Color(0xFF09090B);
+    final activeColor = isDark ? Colors.white : const Color(0xFF09090B);
+    final inactiveColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF52525B);
+    final pillBg = isSelected
+        ? (isDark ? Colors.white.withOpacity(0.16) : const Color(0xFF09090B).withOpacity(0.10))
+        : Colors.transparent;
 
-    // Distinct Status ring accent (crisp emerald green on status ring so users spot Status Saver immediately)
     final ringColor = isSelected
-        ? (isDark ? const Color(0xFF059669) : const Color(0xFF25D366))
-        : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669));
-    final arrowColor = isSelected ? selectedFg : unselectedFg;
+        ? (isDark ? const Color(0xFF34D399) : const Color(0xFF059669))
+        : (isDark ? const Color(0xFF10B981) : const Color(0xFF059669));
+    final arrowColor = isSelected ? activeColor : inactiveColor;
 
     return Expanded(
-      child: InkWell(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _currentIndex = index),
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 2.5),
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? selectedBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? selectedBg
-                  : (isDark ? Colors.white12 : Colors.black12),
-              width: 1.2,
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CustomPaint(
-                  painter: _StatusSaverRingPainter(
-                    ringColor: ringColor,
-                    arrowColor: arrowColor,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                width: 52,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: pillBg,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CustomPaint(
+                      painter: _StatusSaverRingPainter(
+                        ringColor: ringColor,
+                        arrowColor: arrowColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -188,9 +190,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
-                  color: isSelected ? selectedFg : unselectedFg,
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? activeColor : inactiveColor,
                   letterSpacing: 0.1,
                 ),
               ),

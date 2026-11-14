@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../models/music_model.dart';
+import 'system_controls_service.dart';
 
 class MusicScannerService {
   static final MusicScannerService _instance = MusicScannerService._internal();
@@ -48,8 +49,8 @@ class MusicScannerService {
                   final fileName = p.basename(entity.path);
                   final title = p.basenameWithoutExtension(fileName);
 
-                  // Estimate duration based on bitrate / file size if tag reading is not available
-                  final estimatedSeconds = (stat.size / (192 * 1024 / 8)).clamp(30.0, 3600.0).toInt();
+                  // Initial estimate replaced immediately by native metadata below
+                  final estimatedSeconds = (stat.size / (192 * 1024 / 8)).clamp(15.0, 3600.0).toInt();
 
                   musicList.add(
                     MusicModel(
@@ -71,6 +72,29 @@ class MusicScannerService {
             }
           }
         } catch (_) {}
+      }
+    }
+
+    // Hydrate real durations, artist, and album tags natively
+    if (musicList.isNotEmpty) {
+      final mediaInfoMap = await SystemControlsService().getAudiosMediaInfo(
+        musicList.map((m) => m.path).toList(),
+      );
+      if (mediaInfoMap.isNotEmpty) {
+        for (int i = 0; i < musicList.length; i++) {
+          final m = musicList[i];
+          final info = mediaInfoMap[m.path];
+          if (info != null) {
+            final durMs = (info['durationMs'] as num?)?.toInt() ?? 0;
+            final nativeArtist = info['artist'] as String? ?? '';
+            final nativeAlbum = info['album'] as String? ?? '';
+            musicList[i] = m.copyWith(
+              duration: durMs > 0 ? Duration(milliseconds: durMs) : m.duration,
+              artist: nativeArtist.isNotEmpty ? nativeArtist : m.artist,
+              album: nativeAlbum.isNotEmpty ? nativeAlbum : m.album,
+            );
+          }
+        }
       }
     }
 

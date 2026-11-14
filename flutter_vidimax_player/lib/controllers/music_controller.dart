@@ -4,6 +4,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/music_model.dart';
 import '../services/music_scanner_service.dart';
+import '../services/permission_service.dart';
+import '../services/system_controls_service.dart';
 
 enum MusicLoopMode { off, all, single }
 
@@ -99,10 +101,84 @@ class MusicController extends ChangeNotifier {
     return list.map((s) => s.copyWith(isFavorite: _favoriteIds.contains(s.id))).toList();
   }
 
+  bool _notificationPermRequested = false;
+  DateTime _lastNotificationSync = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _lastNotifiedPlaying = false;
+  String? _lastNotifiedSongId;
+
   Future<void> init() async {
+    SystemControlsService().setMusicMediaActionHandler(_handleMediaNotificationAction);
     _initAudioListeners();
     await _loadFavorites();
     await scanMusic();
+  }
+
+  void _handleMediaNotificationAction(String action) {
+    if (action == 'prev') {
+      playPrevious();
+    } else if (action == 'next') {
+      playNext();
+    } else if (action == 'toggle') {
+      togglePlayPause();
+    } else if (action == 'play') {
+      if (!_isPlaying) togglePlayPause();
+    } else if (action == 'pause') {
+      if (_isPlaying) togglePlayPause();
+    } else if (action == 'stop') {
+      pausePlayback(clearNotification: true);
+    } else if (action.startsWith('seek:')) {
+      final ms = int.tryParse(action.substring(5));
+      if (ms != null) {
+        seekTo(Duration(milliseconds: ms));
+      }
+    }
+  }
+
+  Future<void> pausePlayback({bool clearNotification = false}) async {
+    try {
+      await _audioPlayer.pause();
+      _isPlaying = false;
+      if (clearNotification) {
+        _lastNotifiedSongId = null;
+        await SystemControlsService().clearMediaNotification();
+      } else {
+        _syncMediaNotification(force: true);
+      }
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> pauseForVideo() async {
+    if (_isPlaying || currentSong != null) {
+      await pausePlayback(clearNotification: false);
+    }
+  }
+
+  void _syncMediaNotification({bool force = false}) {
+    final song = currentSong;
+    if (song == null) return;
+
+    final now = DateTime.now();
+    final stateChanged = _isPlaying != _lastNotifiedPlaying || song.id != _lastNotifiedSongId;
+    if (!force && !stateChanged && now.difference(_lastNotificationSync).inSeconds < 5) {
+      return;
+    }
+
+    _lastNotificationSync = now;
+    _lastNotifiedPlaying = _isPlaying;
+    _lastNotifiedSongId = song.id;
+
+    final effectiveDuration = _duration > Duration.zero ? _duration : song.duration;
+
+    SystemControlsService().updateMediaNotification(
+      title: song.title,
+      subtitle: song.artist,
+      path: song.path,
+      mediaType: 'audio',
+      isPlaying: _isPlaying,
+      durationMs: effectiveDuration.inMilliseconds,
+      positionMs: _position.inMilliseconds,
+    );
   }
 
   bool _isChangingTrack = false;
@@ -111,11 +187,17 @@ class MusicController extends ChangeNotifier {
   void _initAudioListeners() {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       _isPlaying = state == PlayerState.playing;
+      if (currentSong != null) {
+        _syncMediaNotification(force: true);
+      }
       notifyListeners();
     });
 
     _audioPlayer.onDurationChanged.listen((newDuration) {
       _duration = newDuration;
+      if (currentSong != null && newDuration > Duration.zero) {
+        _syncMediaNotification(force: true);
+      }
       notifyListeners();
     });
 
@@ -161,6 +243,11 @@ class MusicController extends ChangeNotifier {
   }
 
   Future<void> playSong(MusicModel song, {List<MusicModel>? queue}) async {
+    if (!_notificationPermRequested) {
+      _notificationPermRequested = true;
+      await PermissionService().requestNotificationPermission();
+    }
+
     _isChangingTrack = true;
     _trackStartTime = DateTime.now();
 
@@ -181,12 +268,15 @@ class MusicController extends ChangeNotifier {
     try {
       await _audioPlayer.stop();
       _position = Duration.zero;
+      _duration = song.duration;
 
       if (song.path.startsWith('http://') || song.path.startsWith('https://')) {
         await _audioPlayer.play(UrlSource(song.path));
       } else {
         await _audioPlayer.play(DeviceFileSource(song.path));
       }
+      _isPlaying = true;
+      _syncMediaNotification(force: true);
     } catch (e) {
       debugPrint("Error playing song ${song.title}: $e");
     } finally {
@@ -209,9 +299,12 @@ class MusicController extends ChangeNotifier {
     try {
       if (_isPlaying) {
         await _audioPlayer.pause();
+        _isPlaying = false;
       } else {
         await _audioPlayer.resume();
+        _isPlaying = true;
       }
+      _syncMediaNotification(force: true);
     } catch (e) {
       debugPrint("Error toggling play/pause: $e");
     }
@@ -224,6 +317,7 @@ class MusicController extends ChangeNotifier {
     if (_loopMode == MusicLoopMode.off && autoTrigger && _currentIndex >= _playlist.length - 1) {
       await _audioPlayer.stop();
       _isPlaying = false;
+      _syncMediaNotification(force: true);
       notifyListeners();
       return;
     }
@@ -261,6 +355,7 @@ class MusicController extends ChangeNotifier {
     try {
       await _audioPlayer.seek(targetPosition);
       _position = targetPosition;
+      _syncMediaNotification(force: true);
       notifyListeners();
     } catch (e) {
       debugPrint("Error seeking music: $e");
