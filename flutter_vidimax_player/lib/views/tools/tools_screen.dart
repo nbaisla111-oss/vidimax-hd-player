@@ -40,9 +40,9 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
         title: const Text('Media Utilities', style: TextStyle(fontWeight: FontWeight.w800)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppTheme.primaryViolet,
-          labelColor: AppTheme.primaryViolet,
-          unselectedLabelColor: AppTheme.textSecondary(context),
+          indicatorColor: AppTheme.accent(context),
+          labelColor: AppTheme.accent(context),
+          unselectedLabelColor: AppTheme.textMuted(context),
           tabs: const [
             Tab(icon: Icon(Icons.music_note_rounded), text: 'Video to MP3'),
             Tab(icon: Icon(Icons.lock_person_rounded), text: 'Secret Vault'),
@@ -73,14 +73,15 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                colors: [Color(0xFF27272A), Color(0xFF09090B)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white12),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF7C3AED).withOpacity(0.3),
+                  color: Colors.black.withOpacity(0.28),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
@@ -139,9 +140,9 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.video_library_rounded,
-                      color: AppTheme.primaryViolet,
+                      color: AppTheme.accent(context),
                       size: 26,
                     ),
                     const SizedBox(width: 14),
@@ -179,10 +180,10 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
               decoration: BoxDecoration(
                 color: AppTheme.card(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primaryViolet.withOpacity(0.6), width: 1.5),
+                border: Border.all(color: AppTheme.accent(context).withOpacity(0.6), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryViolet.withOpacity(0.12),
+                    color: Colors.black.withOpacity(0.12),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -222,13 +223,13 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryViolet.withOpacity(0.16),
+                                color: AppTheme.accent(context).withOpacity(0.14),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 _selectedVideoForMp3!.formattedDuration,
-                                style: const TextStyle(
-                                  color: AppTheme.primaryViolet,
+                                style: TextStyle(
+                                  color: AppTheme.accent(context),
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -266,15 +267,15 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: AppTheme.border(context)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.swap_horiz_rounded, size: 16, color: AppTheme.secondaryCyan),
-                          SizedBox(width: 4),
+                          Icon(Icons.swap_horiz_rounded, size: 16, color: AppTheme.textPrimary(context)),
+                          const SizedBox(width: 4),
                           Text(
                             'Change',
                             style: TextStyle(
-                              color: AppTheme.secondaryCyan,
+                              color: AppTheme.textPrimary(context),
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -308,10 +309,10 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: isSel ? AppTheme.primaryViolet.withOpacity(0.18) : AppTheme.card(context),
+                        color: isSel ? AppTheme.accent(context) : AppTheme.card(context),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSel ? AppTheme.primaryViolet : AppTheme.border(context),
+                          color: isSel ? AppTheme.accent(context) : AppTheme.border(context),
                         ),
                       ),
                       child: Column(
@@ -319,14 +320,19 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                           Text(
                             '$bitrate kbps',
                             style: TextStyle(
-                              color: isSel ? AppTheme.primaryViolet : AppTheme.textPrimary(context),
+                              color: isSel ? AppTheme.onAccent(context) : AppTheme.textPrimary(context),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             bitrate == 320 ? 'HD Studio' : (bitrate == 192 ? 'Standard' : 'Compact'),
-                            style: TextStyle(fontSize: 10, color: AppTheme.textMuted(context)),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isSel
+                                  ? AppTheme.onAccent(context).withOpacity(0.75)
+                                  : AppTheme.textMuted(context),
+                            ),
                           ),
                         ],
                       ),
@@ -340,7 +346,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
           if (toolsCtrl.isConverting) ...[
             LinearProgressIndicator(
               value: toolsCtrl.conversionProgress,
-              color: AppTheme.primaryViolet,
+              color: AppTheme.accent(context),
               backgroundColor: AppTheme.border(context),
             ),
             const SizedBox(height: 8),
@@ -358,8 +364,8 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 icon: const Icon(Icons.bolt_rounded),
                 label: const Text('Convert & Extract MP3', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryViolet,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.accent(context),
+                  foregroundColor: AppTheme.onAccent(context),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 onPressed: _selectedVideoForMp3 == null
@@ -411,16 +417,16 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [AppTheme.cardDark, const Color(0xFF1E1B4B).withOpacity(0.6)]
-              : [Colors.white, const Color(0xFFF3E8FF)],
+              ? [AppTheme.cardDark, const Color(0xFF222228)]
+              : [Colors.white, const Color(0xFFF4F4F5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primaryViolet.withOpacity(0.4), width: 1.5),
+        border: Border.all(color: AppTheme.accent(context).withOpacity(0.35), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryViolet.withOpacity(0.15),
+            color: Colors.black.withOpacity(0.14),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -451,7 +457,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.share_rounded, color: AppTheme.secondaryCyan, size: 22),
+                icon: Icon(Icons.share_rounded, color: AppTheme.textPrimary(context), size: 22),
                 tooltip: 'Share Audio',
                 onPressed: () {
                   Share.shareXFiles([XFile(file.path)], text: 'Extracted with Rox Player');
@@ -484,15 +490,11 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primaryViolet, Color(0xFF6366F1)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppTheme.accent(context),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryViolet.withOpacity(0.4),
+                        color: Colors.black.withOpacity(0.25),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -502,7 +504,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                     toolsCtrl.isPlayingAudio
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
-                    color: Colors.white,
+                    color: AppTheme.onAccent(context),
                     size: 28,
                   ),
                 ),
@@ -513,12 +515,12 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                   children: [
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppTheme.primaryViolet,
+                        activeTrackColor: AppTheme.accent(context),
                         inactiveTrackColor: AppTheme.border(context),
-                        thumbColor: AppTheme.primaryViolet,
+                        thumbColor: AppTheme.accent(context),
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                         trackHeight: 3,
-                        overlayColor: AppTheme.primaryViolet.withOpacity(0.2),
+                        overlayColor: AppTheme.accent(context).withOpacity(0.2),
                       ),
                       child: Slider(
                         value: currentMs,
@@ -684,7 +686,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isSelected ? AppTheme.primaryViolet : AppTheme.textPrimary(ctx),
+                                  color: isSelected ? AppTheme.accent(ctx) : AppTheme.textPrimary(ctx),
                                   fontWeight: FontWeight.w600,
                                   fontSize: 13,
                                 ),
@@ -697,7 +699,7 @@ class _ToolsScreenState extends State<ToolsScreen> with SingleTickerProviderStat
                                 ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryViolet)
+                                  ? Icon(Icons.check_circle_rounded, color: AppTheme.accent(ctx))
                                   : null,
                               onTap: () {
                                 setState(() => _selectedVideoForMp3 = v);

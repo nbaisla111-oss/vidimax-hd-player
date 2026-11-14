@@ -65,10 +65,10 @@ class MusicQueueBottomSheet extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryViolet.withOpacity(0.18),
+                        color: AppTheme.accent(context).withOpacity(0.14),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 22),
+                      child: Icon(Icons.queue_music_rounded, color: AppTheme.accent(context), size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -125,11 +125,11 @@ class MusicQueueBottomSheet extends StatelessWidget {
                             margin: const EdgeInsets.symmetric(vertical: 3),
                             decoration: BoxDecoration(
                               color: isCurrent
-                                  ? AppTheme.primaryViolet.withOpacity(isDark ? 0.18 : 0.10)
+                                  ? AppTheme.accent(context).withOpacity(isDark ? 0.14 : 0.08)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(14),
                               border: isCurrent
-                                  ? Border.all(color: AppTheme.primaryViolet.withOpacity(0.5), width: 1.2)
+                                  ? Border.all(color: AppTheme.accent(context).withOpacity(0.6), width: 1.2)
                                   : null,
                             ),
                             child: ListTile(
@@ -143,20 +143,14 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                       ? Container(
                                           padding: const EdgeInsets.all(6),
                                           decoration: BoxDecoration(
-                                            color: AppTheme.primaryViolet,
+                                            color: AppTheme.accent(context),
                                             shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: AppTheme.primaryViolet.withOpacity(0.5),
-                                                blurRadius: 8,
-                                              ),
-                                            ],
                                           ),
                                           child: Icon(
                                             musicCtrl.isPlaying
                                                 ? Icons.graphic_eq_rounded
                                                 : Icons.play_arrow_rounded,
-                                            color: Colors.white,
+                                            color: AppTheme.onAccent(context),
                                             size: 16,
                                           ),
                                         )
@@ -175,9 +169,7 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: isCurrent
-                                      ? (isDark ? AppTheme.secondaryCyan : AppTheme.primaryViolet)
-                                      : AppTheme.textPrimary(context),
+                                  color: AppTheme.textPrimary(context),
                                   fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                                   fontSize: 14,
                                 ),
@@ -197,13 +189,13 @@ class MusicQueueBottomSheet extends StatelessWidget {
                                   ? Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.secondaryCyan.withOpacity(0.2),
+                                        color: AppTheme.accent(context),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         'PLAYING',
                                         style: TextStyle(
-                                          color: isDark ? AppTheme.secondaryCyan : AppTheme.primaryViolet,
+                                          color: AppTheme.onAccent(context),
                                           fontSize: 10,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.5,

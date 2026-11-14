@@ -113,22 +113,30 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF1E1B4B), AppTheme.cardDark]
-              : [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)],
+              ? [const Color(0xFF1C1C21), const Color(0xFF09090B)]
+              : [const Color(0xFFF4F4F5), const Color(0xFFE4E4E7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black12,
+          width: 0.8,
         ),
       ),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.black.withOpacity(0.08),
+            color: isDark ? Colors.white.withOpacity(0.14) : Colors.black.withOpacity(0.1),
             shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? Colors.white30 : Colors.black26,
+              width: 1,
+            ),
           ),
           child: Icon(
             Icons.play_arrow_rounded,
-            color: isDark ? Colors.white60 : Colors.black45,
+            color: isDark ? Colors.white : Colors.black87,
             size: 24,
           ),
         ),

@@ -2,28 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Brand Color Palette - Rox Player
-  static const Color primaryViolet = Color(0xFF8B5CF6);
-  static const Color secondaryCyan = Color(0xFF06B6D4);
+  // Brand Color Palette - Rox Player (Sleek Monochrome Black & White)
+  static const Color primaryWhite = Color(0xFFFFFFFF);
+  static const Color primaryBlack = Color(0xFF09090B);
   static const Color accentEmerald = Color(0xFF10B981);
 
-  // Dark Theme Colors
-  static const Color backgroundDark = Color(0xFF0A0D14);
-  static const Color surfaceDark = Color(0xFF121824);
-  static const Color cardDark = Color(0xFF182234);
-  static const Color borderDark = Color(0xFF243048);
-  static const Color textPrimaryDark = Color(0xFFF8FAFC);
-  static const Color textSecondaryDark = Color(0xFFCBD5E1);
-  static const Color textMutedDark = Color(0xFF94A3B8);
+  // Dark Theme Colors (Pure Neutral Black & Charcoal - Zero Blue Tint)
+  static const Color backgroundDark = Color(0xFF09090B);
+  static const Color surfaceDark = Color(0xFF121215);
+  static const Color cardDark = Color(0xFF1A1A1E);
+  static const Color borderDark = Color(0xFF2E2E34);
+  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textSecondaryDark = Color(0xFFE4E4E7);
+  static const Color textMutedDark = Color(0xFFA1A1AA);
 
-  // Light Theme Colors (Crisp high contrast, zero hidden text)
-  static const Color backgroundLight = Color(0xFFF1F5F9);
+  // Light Theme Colors (Pure Crisp White & High-Contrast Black Text)
+  static const Color backgroundLight = Color(0xFFF4F4F5);
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color cardLight = Color(0xFFFFFFFF);
-  static const Color borderLight = Color(0xFFCBD5E1);
-  static const Color textPrimaryLight = Color(0xFF0F172A);
-  static const Color textSecondaryLight = Color(0xFF334155);
-  static const Color textMutedLight = Color(0xFF64748B);
+  static const Color borderLight = Color(0xFFD4D4D8);
+  static const Color textPrimaryLight = Color(0xFF09090B);
+  static const Color textSecondaryLight = Color(0xFF18181B);
+  static const Color textMutedLight = Color(0xFF52525B);
 
   // Adaptive Theme Helpers
   static bool isDark(BuildContext context) =>
@@ -50,15 +50,25 @@ class AppTheme {
   static Color textMuted(BuildContext context) =>
       isDark(context) ? textMutedDark : textMutedLight;
 
+  /// Primary monochrome accent: Crisp White in Dark Mode, Crisp Black in Light Mode
+  static Color accent(BuildContext context) =>
+      isDark(context) ? primaryWhite : primaryBlack;
+
+  /// Foreground color guaranteed to contrast cleanly on top of `accent(context)`
+  static Color onAccent(BuildContext context) =>
+      isDark(context) ? primaryBlack : primaryWhite;
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: backgroundDark,
-      primaryColor: primaryViolet,
+      primaryColor: primaryWhite,
       colorScheme: const ColorScheme.dark(
-        primary: primaryViolet,
-        secondary: secondaryCyan,
+        primary: primaryWhite,
+        onPrimary: primaryBlack,
+        secondary: Color(0xFFE4E4E7),
+        onSecondary: primaryBlack,
         surface: surfaceDark,
         surfaceContainerHigh: cardDark,
         onSurface: textPrimaryDark,
@@ -83,9 +93,9 @@ class AppTheme {
         iconTheme: const IconThemeData(color: textPrimaryDark),
       ),
       tabBarTheme: const TabBarTheme(
-        labelColor: primaryViolet,
+        labelColor: primaryWhite,
         unselectedLabelColor: textMutedDark,
-        indicatorColor: primaryViolet,
+        indicatorColor: primaryWhite,
         dividerColor: borderDark,
       ),
       dividerTheme: const DividerThemeData(
@@ -109,10 +119,10 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surfaceDark,
-        selectedItemColor: primaryViolet,
+        selectedItemColor: primaryWhite,
         unselectedItemColor: textSecondaryDark,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w600),
+        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w800),
+        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w700),
         type: BottomNavigationBarType.fixed,
         elevation: 12,
       ),
@@ -148,10 +158,12 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: backgroundLight,
-      primaryColor: primaryViolet,
+      primaryColor: primaryBlack,
       colorScheme: const ColorScheme.light(
-        primary: primaryViolet,
-        secondary: secondaryCyan,
+        primary: primaryBlack,
+        onPrimary: primaryWhite,
+        secondary: Color(0xFF27272A),
+        onSecondary: primaryWhite,
         surface: surfaceLight,
         surfaceContainerHigh: cardLight,
         onSurface: textPrimaryLight,
@@ -176,9 +188,9 @@ class AppTheme {
         iconTheme: const IconThemeData(color: textPrimaryLight),
       ),
       tabBarTheme: const TabBarTheme(
-        labelColor: primaryViolet,
+        labelColor: primaryBlack,
         unselectedLabelColor: textSecondaryLight,
-        indicatorColor: primaryViolet,
+        indicatorColor: primaryBlack,
         dividerColor: borderLight,
       ),
       dividerTheme: const DividerThemeData(
@@ -202,10 +214,10 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: surfaceLight,
-        selectedItemColor: primaryViolet,
+        selectedItemColor: primaryBlack,
         unselectedItemColor: textSecondaryLight,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w600),
+        selectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w800),
+        unselectedLabelStyle: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w700),
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),

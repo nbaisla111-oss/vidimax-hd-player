@@ -20,19 +20,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'icon': Icons.movie_filter_rounded,
       'title': 'Ultra HD Offline Playback',
       'subtitle': 'Play 4K, 1080p, MKV, and MP4 videos with gesture controls for brightness, volume, and playback speed without buffering.',
-      'gradient': [AppTheme.primaryViolet, const Color(0xFF6366F1)],
+      'gradient': [const Color(0xFF27272A), const Color(0xFF09090B)],
     },
     {
       'icon': Icons.lock_person_rounded,
       'title': 'Encrypted Secret Vault',
       'subtitle': 'Lock private personal videos & music behind a secure 4-digit PIN inside Tools. AES encryption keeps your files hidden from gallery.',
-      'gradient': [const Color(0xFFEC4899), AppTheme.primaryViolet],
+      'gradient': [const Color(0xFF18181B), const Color(0xFF09090B)],
     },
     {
       'icon': Icons.auto_awesome_motion_rounded,
       'title': 'Status Saver & Audio Tools',
       'subtitle': 'Save photo & video statuses directly to your gallery and extract crisp MP3 audio tracks from any video in one tap.',
-      'gradient': [AppTheme.secondaryCyan, AppTheme.accentEmerald],
+      'gradient': [const Color(0xFF27272A), const Color(0xFF18181B)],
     },
   ];
 
@@ -155,7 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     controller: _pageController,
                     count: _pages.length,
                     effect: ExpandingDotsEffect(
-                      activeDotColor: AppTheme.primaryViolet,
+                      activeDotColor: AppTheme.accent(context),
                       dotColor: AppTheme.border(context),
                       dotHeight: 8,
                       dotWidth: 8,
@@ -179,8 +179,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryViolet,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.accent(context),
+                        foregroundColor: AppTheme.onAccent(context),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),

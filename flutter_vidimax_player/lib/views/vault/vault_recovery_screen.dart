@@ -168,7 +168,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
       ),
       body: SafeArea(
         child: _isLoadingQuestion
-            ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryViolet))
+            ? Center(child: CircularProgressIndicator(color: AppTheme.accent(context)))
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -209,13 +209,13 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryViolet.withOpacity(0.14),
+                            color: AppTheme.accent(context).withOpacity(0.14),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.help_center_rounded,
                             size: 40,
-                            color: AppTheme.primaryViolet,
+                            color: AppTheme.accent(context),
                           ),
                         ),
                       ),
@@ -259,7 +259,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.8,
-                                  color: AppTheme.primaryViolet,
+                                  color: AppTheme.accent(context),
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -302,7 +302,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                             helperText: 'Capital or small letters both work as long as spelling matches',
                             helperStyle: TextStyle(color: AppTheme.textMuted(context), fontSize: 11.5),
                             helperMaxLines: 2,
-                            prefixIcon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryViolet),
+                            prefixIcon: Icon(Icons.edit_note_rounded, color: AppTheme.accent(context)),
                             filled: true,
                             fillColor: AppTheme.card(context),
                             border: OutlineInputBorder(
@@ -315,7 +315,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                              borderSide: BorderSide(color: AppTheme.accent(context), width: 1.8),
                             ),
                           ),
                         ),
@@ -409,7 +409,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                           hintText: '••••',
                           hintStyle: TextStyle(color: AppTheme.textMuted(context), letterSpacing: 6),
                           counterText: '',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet),
+                          prefixIcon: Icon(Icons.lock_outline_rounded, color: AppTheme.accent(context)),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureNewPin ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -429,7 +429,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                            borderSide: BorderSide(color: AppTheme.accent(context), width: 1.8),
                           ),
                         ),
                       ),
@@ -464,7 +464,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                           hintText: '••••',
                           hintStyle: TextStyle(color: AppTheme.textMuted(context), letterSpacing: 6),
                           counterText: '',
-                          prefixIcon: const Icon(Icons.lock_reset_rounded, color: AppTheme.secondaryCyan),
+                          prefixIcon: Icon(Icons.lock_reset_rounded, color: AppTheme.accent(context)),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureConfirmPin ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -484,7 +484,7 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                            borderSide: BorderSide(color: AppTheme.accent(context), width: 1.8),
                           ),
                         ),
                       ),
@@ -523,15 +523,15 @@ class _VaultRecoveryScreenState extends State<VaultRecoveryScreen> {
                       height: 52,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryViolet,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppTheme.accent(context),
+                          foregroundColor: AppTheme.onAccent(context),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                         icon: _isSubmitting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                child: CircularProgressIndicator(color: AppTheme.onAccent(context), strokeWidth: 2),
                               )
                             : Icon(_isAnswerVerified ? Icons.lock_open_rounded : Icons.verified_rounded),
                         label: Text(

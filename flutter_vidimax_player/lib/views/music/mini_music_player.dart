@@ -41,16 +41,16 @@ class MiniMusicPlayer extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: AppTheme.isDark(context)
-                ? const Color(0xFF1E1B4B).withOpacity(0.95)
+                ? const Color(0xFF16161A)
                 : AppTheme.surfaceLight,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppTheme.primaryViolet.withOpacity(AppTheme.isDark(context) ? 0.35 : 0.25),
+              color: AppTheme.border(context),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(AppTheme.isDark(context) ? 0.4 : 0.12),
+                color: Colors.black.withOpacity(AppTheme.isDark(context) ? 0.5 : 0.12),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -68,14 +68,10 @@ class MiniMusicPlayer extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [AppTheme.primaryViolet, AppTheme.secondaryCyan],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: AppTheme.accent(context),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.music_note_rounded, color: Colors.white, size: 24),
+                      child: Icon(Icons.music_note_rounded, color: AppTheme.onAccent(context), size: 24),
                     ),
                     const SizedBox(width: 12),
 
@@ -122,7 +118,7 @@ class MiniMusicPlayer extends StatelessWidget {
                     IconButton(
                       icon: Icon(
                         musicCtrl.isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
-                        color: AppTheme.primaryViolet,
+                        color: AppTheme.accent(context),
                         size: 34,
                       ),
                       padding: const EdgeInsets.all(4),
@@ -144,7 +140,7 @@ class MiniMusicPlayer extends StatelessWidget {
 
                     // Queue List Button
                     IconButton(
-                      icon: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 22),
+                      icon: Icon(Icons.queue_music_rounded, color: AppTheme.accent(context), size: 22),
                       padding: const EdgeInsets.all(4),
                       constraints: const BoxConstraints(),
                       tooltip: 'Current Playlist Queue',
@@ -161,9 +157,9 @@ class MiniMusicPlayer extends StatelessWidget {
                   value: progress,
                   minHeight: 2.5,
                   backgroundColor: AppTheme.isDark(context)
-                      ? Colors.white10
+                      ? Colors.white12
                       : AppTheme.borderLight.withOpacity(0.5),
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryViolet),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent(context)),
                 ),
               ),
             ],

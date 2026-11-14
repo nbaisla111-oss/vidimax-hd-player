@@ -81,14 +81,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
           gradient: LinearGradient(
             colors: isDark
                 ? [
-                    const Color(0xFF1E1035),
+                    const Color(0xFF18181B),
                     AppTheme.backgroundDark,
-                    const Color(0xFF0F172A),
+                    const Color(0xFF000000),
                   ]
                 : [
-                    const Color(0xFFEDE9FE),
+                    const Color(0xFFE4E4E7),
                     AppTheme.backgroundLight,
-                    const Color(0xFFE0F2FE),
+                    const Color(0xFFFFFFFF),
                   ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -116,7 +116,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             fontSize: 10,
                             letterSpacing: 1.5,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.primaryViolet.withOpacity(0.9),
+                            color: AppTheme.textMuted(context),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -134,7 +134,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.queue_music_rounded, color: AppTheme.secondaryCyan, size: 24),
+                          icon: Icon(Icons.queue_music_rounded, color: AppTheme.accent(context), size: 24),
                           onPressed: () => MusicQueueBottomSheet.show(context),
                           tooltip: 'Playing Queue',
                         ),
@@ -166,9 +166,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryViolet.withOpacity(0.35),
-                              blurRadius: 50,
-                              spreadRadius: 10,
+                              color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.14 : 0.18),
+                              blurRadius: 48,
+                              spreadRadius: 8,
                             ),
                           ],
                         ),
@@ -189,14 +189,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             shape: BoxShape.circle,
                             gradient: const SweepGradient(
                               colors: [
-                                Color(0xFF1E1B4B),
-                                Color(0xFF0F172A),
-                                Color(0xFF312E81),
-                                Color(0xFF1E1B4B),
+                                Color(0xFF27272A),
+                                Color(0xFF09090B),
+                                Color(0xFF3F3F46),
+                                Color(0xFF09090B),
                               ],
                             ),
                             border: Border.all(
-                              color: isDark ? Colors.white12 : AppTheme.primaryViolet.withOpacity(0.25),
+                              color: isDark ? Colors.white24 : Colors.black26,
                               width: 3,
                             ),
                           ),
@@ -206,19 +206,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               height: 110,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [AppTheme.primaryViolet, AppTheme.secondaryCyan],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                                color: AppTheme.accent(context),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.4),
+                                    color: Colors.black.withOpacity(0.45),
                                     blurRadius: 15,
                                   ),
                                 ],
                               ),
-                              child: const Icon(Icons.music_note_rounded, color: Colors.white, size: 54),
+                              child: Icon(Icons.music_note_rounded, color: AppTheme.onAccent(context), size: 54),
                             ),
                           ),
                         ),
@@ -276,13 +272,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   children: [
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: AppTheme.primaryViolet,
+                        activeTrackColor: AppTheme.accent(context),
                         inactiveTrackColor: isDark ? Colors.white12 : Colors.black12,
-                        thumbColor: isDark ? Colors.white : AppTheme.primaryViolet,
+                        thumbColor: AppTheme.accent(context),
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
                         trackHeight: 4,
-                        overlayColor: AppTheme.primaryViolet.withOpacity(0.2),
+                        overlayColor: AppTheme.accent(context).withOpacity(0.2),
                       ),
                       child: Slider(
                         value: currentMs,
@@ -321,7 +317,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     IconButton(
                       icon: Icon(
                         Icons.shuffle_rounded,
-                        color: musicCtrl.isShuffle ? AppTheme.primaryViolet : AppTheme.textMuted(context),
+                        color: musicCtrl.isShuffle ? AppTheme.accent(context) : AppTheme.textMuted(context),
                         size: 24,
                       ),
                       onPressed: () => musicCtrl.toggleShuffle(),
@@ -343,15 +339,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppTheme.primaryViolet, Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: AppTheme.accent(context),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryViolet.withOpacity(0.5),
+                              color: Colors.black.withOpacity(0.35),
                               blurRadius: 20,
                               offset: const Offset(0, 6),
                             ),
@@ -359,7 +351,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         ),
                         child: Icon(
                           musicCtrl.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                          color: Colors.white,
+                          color: AppTheme.onAccent(context),
                           size: 40,
                         ),
                       ),
@@ -381,7 +373,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             : Icons.repeat_rounded,
                         color: musicCtrl.loopMode == MusicLoopMode.off
                             ? AppTheme.textMuted(context)
-                            : AppTheme.primaryViolet,
+                            : AppTheme.accent(context),
                         size: 24,
                       ),
                       onPressed: () => musicCtrl.toggleLoopMode(),
@@ -398,14 +390,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.08) : AppTheme.surfaceLight,
+                      color: isDark ? Colors.white.withOpacity(0.1) : AppTheme.surfaceLight,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.secondaryCyan.withOpacity(0.35)),
+                      border: Border.all(color: AppTheme.border(context)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.queue_music_rounded, size: 18, color: AppTheme.secondaryCyan),
+                        Icon(Icons.queue_music_rounded, size: 18, color: AppTheme.accent(context)),
                         const SizedBox(width: 8),
                         Text(
                           'Queue (${musicCtrl.playlist.length} Songs)',
@@ -416,7 +408,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppTheme.secondaryCyan),
+                        Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppTheme.accent(context)),
                       ],
                     ),
                   ),

@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Content Area
           Expanded(
             child: videoCtrl.isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryViolet))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.accent(context)))
                 : _showFolders && videoCtrl.selectedFolder == null
                     ? _buildFoldersGrid(videoCtrl)
                     : _buildVideosList(videoCtrl),
@@ -182,18 +182,18 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryViolet : AppTheme.card(context),
+          color: isSelected ? AppTheme.accent(context) : AppTheme.card(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryViolet : AppTheme.border(context),
+            color: isSelected ? AppTheme.accent(context) : AppTheme.border(context),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AppTheme.textSecondary(context),
+            fontWeight: FontWeight.w700,
+            color: isSelected ? AppTheme.onAccent(context) : AppTheme.textSecondary(context),
           ),
         ),
       ),
@@ -242,12 +242,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryViolet.withOpacity(0.15),
+                    color: AppTheme.accent(context).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.folder_rounded,
-                    color: AppTheme.primaryViolet,
+                    color: AppTheme.accent(context),
                     size: 28,
                   ),
                 ),
@@ -444,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   value: 'vault',
                   child: Row(
                     children: [
-                      const Icon(Icons.lock_outline_rounded, size: 18, color: AppTheme.primaryViolet),
+                      Icon(Icons.lock_outline_rounded, size: 18, color: AppTheme.accent(ctx)),
                       const SizedBox(width: 8),
                       Text('Move to Secret Vault', style: TextStyle(color: AppTheme.textPrimary(ctx))),
                     ],

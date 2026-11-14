@@ -155,10 +155,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 child: Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryViolet.withOpacity(0.15),
+                    color: AppTheme.accent(context).withOpacity(0.14),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.security_rounded, size: 42, color: AppTheme.primaryViolet),
+                  child: Icon(Icons.security_rounded, size: 42, color: AppTheme.accent(context)),
                 ),
               ),
               const SizedBox(height: 16),
@@ -202,7 +202,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: AppTheme.card(context),
-                  prefixIcon: const Icon(Icons.quiz_outlined, color: AppTheme.primaryViolet),
+                  prefixIcon: Icon(Icons.quiz_outlined, color: AppTheme.accent(context)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(color: AppTheme.border(context)),
@@ -213,7 +213,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                    borderSide: BorderSide(color: AppTheme.accent(context), width: 1.8),
                   ),
                 ),
                 items: VaultEncryptionService.defaultSecurityQuestions
@@ -260,7 +260,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   helperText: 'Spelling matters, not capital/small letters (e.g. "Rocky" = "rocky")',
                   helperStyle: TextStyle(color: AppTheme.textMuted(context), fontSize: 11.5),
                   helperMaxLines: 2,
-                  prefixIcon: const Icon(Icons.edit_note_rounded, color: AppTheme.secondaryCyan),
+                  prefixIcon: Icon(Icons.edit_note_rounded, color: AppTheme.accent(context)),
                   filled: true,
                   fillColor: AppTheme.card(context),
                   border: OutlineInputBorder(
@@ -273,7 +273,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.primaryViolet, width: 1.8),
+                    borderSide: BorderSide(color: AppTheme.accent(context), width: 1.8),
                   ),
                 ),
               ),
@@ -293,8 +293,8 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 height: 52,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryViolet,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.accent(context),
+                    foregroundColor: AppTheme.onAccent(context),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   icon: const Icon(Icons.check_circle_outline_rounded),
@@ -358,10 +358,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryViolet.withOpacity(0.15),
+                    color: AppTheme.accent(context).withOpacity(0.14),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.lock_rounded, size: 44, color: AppTheme.primaryViolet),
+                  child: Icon(Icons.lock_rounded, size: 44, color: AppTheme.accent(context)),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -392,9 +392,9 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                       height: 16,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isFilled ? AppTheme.primaryViolet : Colors.transparent,
+                        color: isFilled ? AppTheme.accent(context) : Colors.transparent,
                         border: Border.all(
-                          color: isFilled ? AppTheme.primaryViolet : AppTheme.border(context),
+                          color: isFilled ? AppTheme.accent(context) : AppTheme.border(context),
                           width: 2,
                         ),
                       ),
@@ -412,11 +412,11 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 if (vaultCtrl.isConfigured) ...[
                   const SizedBox(height: 10),
                   TextButton.icon(
-                    icon: const Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.secondaryCyan),
-                    label: const Text(
+                    icon: Icon(Icons.help_outline_rounded, size: 18, color: AppTheme.accent(context)),
+                    label: Text(
                       'Forgot PIN?',
                       style: TextStyle(
-                        color: AppTheme.secondaryCyan,
+                        color: AppTheme.accent(context),
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -519,7 +519,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               title: const Text('Secret Vault', style: TextStyle(fontWeight: FontWeight.bold)),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan),
+                  icon: Icon(Icons.security_rounded, color: AppTheme.accent(context)),
                   tooltip: 'Security Question Settings',
                   onPressed: () => _showSecuritySettingsDialog(context, vaultCtrl),
                 ),
@@ -531,8 +531,8 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               ],
               bottom: TabBar(
                 controller: _tabController,
-                indicatorColor: AppTheme.primaryViolet,
-                labelColor: AppTheme.primaryViolet,
+                indicatorColor: AppTheme.accent(context),
+                labelColor: AppTheme.accent(context),
                 unselectedLabelColor: AppTheme.textMuted(context),
                 tabs: [
                   Tab(icon: const Icon(Icons.movie_rounded), text: 'Videos (${videoItems.length})'),
@@ -541,9 +541,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               ),
             ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.primaryViolet,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add to Vault', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: AppTheme.accent(context),
+        foregroundColor: AppTheme.onAccent(context),
+        icon: Icon(Icons.add_rounded, color: AppTheme.onAccent(context)),
+        label: Text('Add to Vault', style: TextStyle(color: AppTheme.onAccent(context), fontWeight: FontWeight.bold)),
         onPressed: () => _showAddOptionsModal(context, vaultCtrl),
       ),
       body: Column(
@@ -569,7 +570,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan, size: 20),
+                          icon: Icon(Icons.security_rounded, color: AppTheme.accent(context), size: 20),
                           tooltip: 'Security Question Settings',
                           onPressed: () => _showSecuritySettingsDialog(context, vaultCtrl),
                         ),
@@ -583,8 +584,8 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   ),
                   TabBar(
                     controller: _tabController,
-                    indicatorColor: AppTheme.primaryViolet,
-                    labelColor: AppTheme.primaryViolet,
+                    indicatorColor: AppTheme.accent(context),
+                    labelColor: AppTheme.accent(context),
                     unselectedLabelColor: AppTheme.textMuted(context),
                     tabs: [
                       Tab(text: 'Videos (${videoItems.length})'),
@@ -617,7 +618,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
             Icon(
               isVideo ? Icons.video_library_rounded : Icons.music_off_rounded,
               size: 56,
-              color: AppTheme.primaryViolet.withOpacity(0.4),
+              color: AppTheme.accent(context).withOpacity(0.4),
             ),
             const SizedBox(height: 14),
             Text(
@@ -689,10 +690,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   child: Container(
                     width: 52,
                     height: 52,
-                    color: AppTheme.primaryViolet.withOpacity(0.12),
+                    color: AppTheme.accent(context).withOpacity(0.12),
                     child: Icon(
                       isVideo ? Icons.lock_rounded : Icons.audiotrack_rounded,
-                      color: AppTheme.primaryViolet,
+                      color: AppTheme.accent(context),
                       size: 26,
                     ),
                   ),
@@ -721,7 +722,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.lock_open_rounded, color: AppTheme.secondaryCyan, size: 22),
+                  icon: Icon(Icons.lock_open_rounded, color: AppTheme.accent(context), size: 22),
                   tooltip: 'Unhide & restore to gallery',
                   onPressed: () async {
                     await vaultCtrl.unhideItem(item);
@@ -771,10 +772,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryViolet.withOpacity(0.15),
+                      color: AppTheme.accent(ctx).withOpacity(0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.movie_rounded, color: AppTheme.primaryViolet),
+                    child: Icon(Icons.movie_rounded, color: AppTheme.accent(ctx)),
                   ),
                   title: Text(
                     'Hide Video from Device',
@@ -794,10 +795,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppTheme.secondaryCyan.withOpacity(0.15),
+                      color: AppTheme.accent(ctx).withOpacity(0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.audiotrack_rounded, color: AppTheme.secondaryCyan),
+                    child: Icon(Icons.audiotrack_rounded, color: AppTheme.accent(ctx)),
                   ),
                   title: Text(
                     'Hide Audio / Music from Device',
@@ -874,7 +875,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                               '${v.formattedDuration} · ${v.formattedSize} · ${v.folderName}',
                               style: TextStyle(color: AppTheme.textMuted(ctx), fontSize: 11),
                             ),
-                            trailing: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet),
+                            trailing: Icon(Icons.lock_outline_rounded, color: AppTheme.accent(ctx)),
                             onTap: () async {
                               Navigator.pop(ctx);
                               await vaultCtrl.hideVideo(v);
@@ -932,10 +933,10 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: AppTheme.secondaryCyan.withOpacity(0.15),
+                                color: AppTheme.accent(ctx).withOpacity(0.14),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.audiotrack_rounded, color: AppTheme.secondaryCyan, size: 22),
+                              child: Icon(Icons.audiotrack_rounded, color: AppTheme.accent(ctx), size: 22),
                             ),
                             title: Text(
                               song.title,
@@ -950,7 +951,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                               '${song.artist} · ${song.formattedDuration}',
                               style: TextStyle(color: AppTheme.textMuted(ctx), fontSize: 11),
                             ),
-                            trailing: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryViolet),
+                            trailing: Icon(Icons.lock_outline_rounded, color: AppTheme.accent(ctx)),
                             onTap: () async {
                               Navigator.pop(ctx);
                               await vaultCtrl.hideMusic(song);
@@ -990,7 +991,7 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Row(
                 children: [
-                  const Icon(Icons.security_rounded, color: AppTheme.secondaryCyan),
+                  Icon(Icons.security_rounded, color: AppTheme.accent(context)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1087,8 +1088,8 @@ class _VaultScreenState extends State<VaultScreen> with SingleTickerProviderStat
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryViolet,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.accent(context),
+                    foregroundColor: AppTheme.onAccent(context),
                   ),
                   child: const Text('Save'),
                   onPressed: () async {

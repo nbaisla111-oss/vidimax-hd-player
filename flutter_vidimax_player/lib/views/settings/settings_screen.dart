@@ -41,11 +41,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.pie_chart_rounded, color: AppTheme.secondaryCyan, size: 22),
-                    SizedBox(width: 10),
-                    Text(
+                    Icon(Icons.pie_chart_rounded, color: AppTheme.accent(context), size: 22),
+                    const SizedBox(width: 10),
+                    const Text(
                       'Internal Storage Usage',
                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
@@ -59,8 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     height: 10,
                     child: Row(
                       children: [
-                        Expanded(flex: 35, child: Container(color: AppTheme.primaryViolet)),
-                        Expanded(flex: 15, child: Container(color: AppTheme.secondaryCyan)),
+                        Expanded(flex: 35, child: Container(color: AppTheme.accent(context))),
+                        Expanded(flex: 15, child: Container(color: const Color(0xFF71717A))),
                         Expanded(flex: 10, child: Container(color: AppTheme.accentEmerald)),
                         Expanded(flex: 40, child: Container(color: isDark ? AppTheme.borderDark : Colors.grey.shade300)),
                       ],
@@ -71,8 +71,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildLegendItem('Videos (3.2 GB)', AppTheme.primaryViolet),
-                    _buildLegendItem('Vault (1.4 GB)', AppTheme.secondaryCyan),
+                    _buildLegendItem('Videos (3.2 GB)', AppTheme.accent(context)),
+                    _buildLegendItem('Vault (1.4 GB)', const Color(0xFF71717A)),
                     _buildLegendItem('Cache ($_cacheSize)', AppTheme.accentEmerald),
                   ],
                 ),
@@ -87,13 +87,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListTile(
               leading: Icon(
                 themeCtrl.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                color: AppTheme.primaryViolet,
+                color: AppTheme.accent(context),
               ),
               title: const Text('Theme Mode', style: TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(themeCtrl.isDarkMode ? 'AMOLED Dark Theme' : 'Clean Light Theme'),
               trailing: Switch(
                 value: themeCtrl.isDarkMode,
-                activeColor: AppTheme.primaryViolet,
+                activeColor: AppTheme.accent(context),
+                activeTrackColor: AppTheme.accent(context).withOpacity(0.35),
                 onChanged: (_) => themeCtrl.toggleTheme(),
               ),
             ),
@@ -106,11 +107,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 SwitchListTile(
-                  secondary: const Icon(Icons.speed_rounded, color: AppTheme.secondaryCyan),
+                  secondary: Icon(Icons.speed_rounded, color: AppTheme.accent(context)),
                   title: const Text('Hardware Acceleration', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Smoother 4K 60FPS video decoding'),
                   value: _hwAcceleration,
-                  activeColor: AppTheme.primaryViolet,
+                  activeColor: AppTheme.accent(context),
+                  activeTrackColor: AppTheme.accent(context).withOpacity(0.35),
                   onChanged: (val) => setState(() => _hwAcceleration = val),
                 ),
                 const Divider(height: 1, indent: 56),
@@ -119,7 +121,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Background Play', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Continue audio when switching apps or locking screen'),
                   value: _backgroundPlay,
-                  activeColor: AppTheme.primaryViolet,
+                  activeColor: AppTheme.accent(context),
+                  activeTrackColor: AppTheme.accent(context).withOpacity(0.35),
                   onChanged: (val) => setState(() => _backgroundPlay = val),
                 ),
                 const Divider(height: 1, indent: 56),
@@ -128,7 +131,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: const Text('Resume Playback', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('Remember last watched timestamp'),
                   value: _resumePlayback,
-                  activeColor: AppTheme.primaryViolet,
+                  activeColor: AppTheme.accent(context),
+                  activeTrackColor: AppTheme.accent(context).withOpacity(0.35),
                   onChanged: (val) => setState(() => _resumePlayback = val),
                 ),
               ],
@@ -169,7 +173,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(
-                  leading: const Icon(Icons.shield_outlined, color: AppTheme.secondaryCyan),
+                  leading: Icon(Icons.shield_outlined, color: AppTheme.accent(context)),
                   title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: const Text('100% offline security, zero cloud data transfer'),
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -184,10 +188,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: _showSupportDialog,
                 ),
                 const Divider(height: 1, indent: 56),
-                const ListTile(
-                  leading: Icon(Icons.info_outline_rounded, color: AppTheme.primaryViolet),
-                  title: Text('Rox Player', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('Version 1.0.0 (Production Build) · Offline Media Suite'),
+                ListTile(
+                  leading: Icon(Icons.info_outline_rounded, color: AppTheme.accent(context)),
+                  title: const Text('Rox Player', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Version 1.0.0 (Production Build) · Offline Media Suite'),
                 ),
               ],
             ),

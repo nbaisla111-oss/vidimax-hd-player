@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/tools_controller.dart';
@@ -56,14 +57,18 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 34,
+              height: 34,
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+                  colors: [Color(0xFF25D366), Color(0xFF059669)],
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
+              child: const CustomPaint(
+                painter: _StatusBadgePainter(color: Colors.white),
+              ),
             ),
             const SizedBox(width: 12),
             Column(
@@ -106,7 +111,7 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark
-                    ? [const Color(0xFF064E3B).withOpacity(0.55), const Color(0xFF0F172A)]
+                    ? [const Color(0xFF064E3B).withOpacity(0.55), const Color(0xFF121215)]
                     : [const Color(0xFFECFDF5), const Color(0xFFD1FAE5)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -190,8 +195,8 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppTheme.primaryViolet.withOpacity(isDark ? 0.2 : 0.1),
-                    const Color(0xFFF59E0B).withOpacity(isDark ? 0.15 : 0.12),
+                    AppTheme.accent(context).withOpacity(isDark ? 0.14 : 0.08),
+                    const Color(0xFFF59E0B).withOpacity(isDark ? 0.16 : 0.12),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
@@ -256,10 +261,12 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                                   color: AppTheme.accentEmerald.withOpacity(0.14),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
-                                  Icons.chat_bubble_outline_rounded,
-                                  size: 48,
-                                  color: AppTheme.accentEmerald,
+                                child: const SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: CustomPaint(
+                                    painter: _StatusBadgePainter(color: AppTheme.accentEmerald),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -289,8 +296,8 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                                     icon: const Icon(Icons.security_update_good_rounded, size: 18),
                                     label: const Text('Grant Storage Permission', style: TextStyle(fontWeight: FontWeight.bold)),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primaryViolet,
-                                      foregroundColor: Colors.white,
+                                      backgroundColor: AppTheme.accent(context),
+                                      foregroundColor: AppTheme.onAccent(context),
                                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                     ),
@@ -429,7 +436,7 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.videocam_rounded, color: AppTheme.secondaryCyan, size: 14),
+                      Icon(Icons.videocam_rounded, color: Colors.white, size: 14),
                       SizedBox(width: 4),
                       Text('VIDEO', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                     ],
@@ -533,10 +540,10 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryViolet.withOpacity(0.85),
+                              color: Colors.white.withOpacity(0.92),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                            child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 40),
                           ),
                         ),
                     ],
@@ -552,8 +559,8 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                       icon: const Icon(Icons.play_arrow_rounded, size: 20),
                       label: const Text('Play Video'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryViolet,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.accent(context),
+                        foregroundColor: AppTheme.onAccent(context),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
@@ -610,4 +617,53 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
       },
     );
   }
+}
+
+class _StatusBadgePainter extends CustomPainter {
+  final Color color;
+  const _StatusBadgePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) / 2) - 1.5;
+
+    final ringPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width >= 36 ? 3.2 : 2.2
+      ..strokeCap = StrokeCap.round;
+
+    const segments = 3;
+    const gapRadians = 0.42;
+    final sweep = (2 * math.pi - (segments * gapRadians)) / segments;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    for (int i = 0; i < segments; i++) {
+      final start = -math.pi / 2 + i * (sweep + gapRadians);
+      canvas.drawArc(rect, start, sweep, false, ringPaint);
+    }
+
+    final scale = size.width / 24.0;
+    final arrowPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2 * scale.clamp(0.9, 1.5)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawLine(
+      Offset(center.dx, center.dy - 4.2 * scale),
+      Offset(center.dx, center.dy + 3.4 * scale),
+      arrowPaint,
+    );
+    final head = Path()
+      ..moveTo(center.dx - 3.6 * scale, center.dy + 0.2 * scale)
+      ..lineTo(center.dx, center.dy + 4.0 * scale)
+      ..lineTo(center.dx + 3.6 * scale, center.dy + 0.2 * scale);
+    canvas.drawPath(head, arrowPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StatusBadgePainter oldDelegate) => oldDelegate.color != color;
 }

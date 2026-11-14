@@ -575,12 +575,12 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                     title: Text(
                       s == 1.0 ? '1.0x (Normal)' : '${s}x',
                       style: TextStyle(
-                        color: isSelected ? AppTheme.primaryViolet : Colors.white,
+                        color: isSelected ? Colors.white : Colors.white70,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     ),
                     trailing: isSelected
-                        ? const Icon(Icons.check_rounded, color: AppTheme.primaryViolet)
+                        ? const Icon(Icons.check_rounded, color: Colors.white)
                         : null,
                     onTap: () {
                       setState(() {
@@ -621,7 +621,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                   padding: const EdgeInsets.fromLTRB(18, 14, 10, 10),
                   child: Row(
                     children: [
-                      const Icon(Icons.playlist_play_rounded, color: AppTheme.primaryViolet, size: 24),
+                      const Icon(Icons.playlist_play_rounded, color: Colors.white, size: 24),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -652,10 +652,10 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                       return Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
-                          color: isCurrent ? AppTheme.primaryViolet.withOpacity(0.18) : Colors.transparent,
+                          color: isCurrent ? Colors.white.withOpacity(0.14) : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                           border: isCurrent
-                              ? Border.all(color: AppTheme.primaryViolet.withOpacity(0.6))
+                              ? Border.all(color: Colors.white54)
                               : null,
                         ),
                         child: ListTile(
@@ -685,7 +685,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: isCurrent ? AppTheme.secondaryCyan : Colors.white,
+                              color: isCurrent ? Colors.white : Colors.white70,
                               fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
                               fontSize: 13.5,
                             ),
@@ -887,16 +887,16 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
+                      color: Colors.black.withOpacity(0.82),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: AppTheme.secondaryCyan.withOpacity(0.45)),
+                      border: Border.all(color: Colors.white38),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           _volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                          color: AppTheme.secondaryCyan,
+                          color: Colors.white,
                           size: 28,
                         ),
                         const SizedBox(width: 14),
@@ -914,7 +914,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                               height: 4,
                               child: LinearProgressIndicator(
                                 value: _volume,
-                                color: AppTheme.secondaryCyan,
+                                color: Colors.white,
                                 backgroundColor: Colors.white24,
                               ),
                             ),
@@ -1096,7 +1096,7 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                     child: Icon(
                       _autoPlayNext ? Icons.play_arrow_rounded : Icons.pause_rounded,
                       size: 12,
-                      color: const Color(0xFF0F172A),
+                      color: Color(0xFF09090B),
                     ),
                   ),
                 ),
@@ -1169,17 +1169,17 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: _playbackSpeed != 1.0
-                          ? AppTheme.primaryViolet.withOpacity(0.85)
+                          ? Colors.white
                           : Colors.white.withOpacity(0.14),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _playbackSpeed != 1.0 ? AppTheme.primaryViolet : Colors.white24,
+                        color: _playbackSpeed != 1.0 ? Colors.white : Colors.white24,
                       ),
                     ),
                     child: Text(
                       '${_playbackSpeed}x',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: _playbackSpeed != 1.0 ? Colors.black : Colors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
@@ -1372,14 +1372,14 @@ class _CustomVideoPlayerScreenState extends State<CustomVideoPlayerScreen> with 
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
             color: isActive
-                ? AppTheme.primaryViolet.withOpacity(0.85)
+                ? Colors.white
                 : Colors.white.withOpacity(0.14),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isActive ? AppTheme.primaryViolet : Colors.white24,
+              color: isActive ? Colors.white : Colors.white24,
             ),
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
+          child: Icon(icon, color: isActive ? Colors.black : Colors.white, size: 18),
         ),
       ),
     );
