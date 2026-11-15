@@ -146,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             right: 0,
             child: Center(
               child: Text(
-                'v1.0.0 • Offline & Encrypted',
+                'v1.0.1 • Offline & Encrypted',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppTheme.textMuted(context),
