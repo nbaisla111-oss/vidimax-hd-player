@@ -26,6 +26,14 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader('UTF-8') { reader ->
+        keystoreProperties.load(reader)
+    }
+}
+
 android {
     namespace "com.vidimax.hdplayer"
     compileSdk 35
@@ -54,9 +62,33 @@ android {
         multiDexEnabled true
     }
 
+    signingConfigs {
+        release {
+            def rawStoreFile = keystoreProperties.getProperty('storeFile')?.trim()
+            if (rawStoreFile) {
+                def candidateApp = file(rawStoreFile)
+                def candidateRoot = rootProject.file(rawStoreFile)
+                storeFile candidateApp.exists() ? candidateApp : candidateRoot
+            }
+            storePassword keystoreProperties.getProperty('storePassword')
+            keyAlias keystoreProperties.getProperty('keyAlias')
+            keyPassword keystoreProperties.getProperty('keyPassword')
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            if (!keystorePropertiesFile.exists()
+                    || signingConfigs.release.storeFile == null
+                    || !signingConfigs.release.storeFile.exists()
+                    || !signingConfigs.release.storePassword
+                    || !signingConfigs.release.keyAlias
+                    || !signingConfigs.release.keyPassword) {
+                throw new GradleException(
+                    "Release signing configuration missing! Please provide android/key.properties and upload-keystore.jks."
+                )
+            }
+            signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
         }
