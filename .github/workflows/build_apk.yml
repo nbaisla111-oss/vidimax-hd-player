@@ -1,4 +1,4 @@
-name: Build Android APK - Rox Player
+name: Build Android App Bundle - Rox Player
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Build & Export Android APK
+    name: Build & Export Android AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -44,21 +44,21 @@ jobs:
           flutter clean
           flutter pub get
 
-      - name: 🔨 Build Android Release APK
+      - name: 🔨 Build Android App Bundle (AAB)
         run: |
           cd flutter_vidimax_player
-          flutter build apk --release --no-tree-shake-icons
+          flutter build appbundle --release --no-tree-shake-icons
 
-      - name: 🚀 Upload APK Artifact
+      - name: 🚀 Upload AAB Artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Rox-Player-Release-APK
-          path: flutter_vidimax_player/build/app/outputs/flutter-apk/*.apk
+          name: Rox-Player-Release-AAB
+          path: flutter_vidimax_player/build/app/outputs/bundle/release/*.aab
           retention-days: 30
 
       - name: 📋 Summary of Output
         if: always()
         run: |
-          echo "### 🎉 Android APK Build Run Completed!" >> $GITHUB_STEP_SUMMARY
-          echo "Check the Artifacts section above to download the APK file." >> $GITHUB_STEP_SUMMARY
+          echo "### 🎉 Android AAB Build Run Completed!" >> $GITHUB_STEP_SUMMARY
+          echo "Check the Artifacts section above to download the AAB file." >> $GITHUB_STEP_SUMMARY
