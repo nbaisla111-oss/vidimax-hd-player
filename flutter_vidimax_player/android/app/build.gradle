@@ -36,8 +36,8 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "com.rox.player"
-    compileSdk 35
-    compileSdkVersion 35
+    compileSdk 36
+    compileSdkVersion 36
     ndkVersion = "25.1.8937393"
 
     compileOptions {
@@ -56,7 +56,7 @@ android {
     defaultConfig {
         applicationId "com.rox.player"
         minSdk 24
-        targetSdk 35
+        targetSdk 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
