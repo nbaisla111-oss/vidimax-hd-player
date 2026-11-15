@@ -35,7 +35,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.vidimax.hdplayer"
+    namespace "com.rox.player"
     compileSdk 35
     compileSdkVersion 35
     ndkVersion = "25.1.8937393"
@@ -54,7 +54,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.vidimax.hdplayer"
+        applicationId "com.rox.player"
         minSdk 24
         targetSdk 35
         versionCode flutterVersionCode.toInteger()

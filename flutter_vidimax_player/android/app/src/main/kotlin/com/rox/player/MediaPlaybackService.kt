@@ -1,4 +1,4 @@
-package com.vidimax.hdplayer
+package com.rox.player
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -31,14 +31,14 @@ class MediaPlaybackService : Service() {
         const val CHANNEL_ID = "rox_media_playback_channel"
         const val NOTIFICATION_ID = 4401
 
-        const val ACTION_UPDATE = "com.vidimax.hdplayer.media.UPDATE"
-        const val ACTION_CLEAR = "com.vidimax.hdplayer.media.CLEAR"
-        const val ACTION_PREV = "com.vidimax.hdplayer.media.PREV"
-        const val ACTION_TOGGLE = "com.vidimax.hdplayer.media.TOGGLE"
-        const val ACTION_NEXT = "com.vidimax.hdplayer.media.NEXT"
-        const val ACTION_STOP = "com.vidimax.hdplayer.media.STOP"
+        const val ACTION_UPDATE = "com.rox.player.media.UPDATE"
+        const val ACTION_CLEAR = "com.rox.player.media.CLEAR"
+        const val ACTION_PREV = "com.rox.player.media.PREV"
+        const val ACTION_TOGGLE = "com.rox.player.media.TOGGLE"
+        const val ACTION_NEXT = "com.rox.player.media.NEXT"
+        const val ACTION_STOP = "com.rox.player.media.STOP"
 
-        const val ACTION_MEDIA_EVENT = "com.vidimax.hdplayer.ACTION_MEDIA_EVENT"
+        const val ACTION_MEDIA_EVENT = "com.rox.player.ACTION_MEDIA_EVENT"
         const val EXTRA_EVENT = "event"
 
         const val EXTRA_TITLE = "title"

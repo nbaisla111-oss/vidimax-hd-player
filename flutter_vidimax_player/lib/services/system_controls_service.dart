@@ -5,7 +5,7 @@ class SystemControlsService {
   static final SystemControlsService _instance = SystemControlsService._internal();
   factory SystemControlsService() => _instance;
 
-  static const MethodChannel _channel = MethodChannel('com.vidimax.player/system_controls');
+  static const MethodChannel _channel = MethodChannel('com.rox.player/system_controls');
 
   void Function(String action)? _musicMediaActionHandler;
 

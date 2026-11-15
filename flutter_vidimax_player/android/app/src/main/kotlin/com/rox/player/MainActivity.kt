@@ -1,4 +1,4 @@
-package com.vidimax.hdplayer
+package com.rox.player
 
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
@@ -34,8 +34,8 @@ import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     companion object {
-        private const val CHANNEL = "com.vidimax.player/system_controls"
-        private const val ACTION_PIP_CONTROL = "com.vidimax.hdplayer.ACTION_PIP_CONTROL"
+        private const val CHANNEL = "com.rox.player/system_controls"
+        private const val ACTION_PIP_CONTROL = "com.rox.player.ACTION_PIP_CONTROL"
         private const val EXTRA_CONTROL_TYPE = "control_type"
         private const val CONTROL_PREV = "prev"
         private const val CONTROL_TOGGLE = "toggle"

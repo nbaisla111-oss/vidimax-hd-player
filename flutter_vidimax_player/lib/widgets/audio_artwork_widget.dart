@@ -24,7 +24,7 @@ class AudioArtworkWidget extends StatefulWidget {
   static final Map<String, Uint8List> _cache = {};
   static final Set<String> _noArtCache = {};
   static final Map<String, Future<Uint8List?>> _pendingFutures = {};
-  static const MethodChannel _channel = MethodChannel('com.vidimax.player/system_controls');
+  static const MethodChannel _channel = MethodChannel('com.rox.player/system_controls');
 
   @override
   State<AudioArtworkWidget> createState() => _AudioArtworkWidgetState();
