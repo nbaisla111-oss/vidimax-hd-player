@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/video_model.dart';
 import '../models/folder_model.dart';
 import '../services/video_scanner_service.dart';
 import '../services/permission_service.dart';
+import '../services/system_controls_service.dart';
 
 enum VideoSortMode { dateDesc, dateAsc, nameAsc, sizeDesc, durationDesc }
 
@@ -19,6 +21,7 @@ class VideoController extends ChangeNotifier {
   bool _hasPermission = false;
   String? _selectedFolder;
   bool _isInitialized = false; // ताकि बार-बार फालतू री-स्कैन न हो
+  StreamSubscription<void>? _permissionSub;
 
   List<VideoModel> get videos => _filteredVideos;
   Map<String, FolderModel> get folders => _folders;
@@ -29,6 +32,19 @@ class VideoController extends ChangeNotifier {
   VideoSortMode get sortMode => _sortMode;
 
   Future<void> init() async {
+    SystemControlsService().setVideoLibraryChangedHandler(() {
+      if (_hasPermission) {
+        loadVideos(silentBackground: true);
+      }
+    });
+    _permissionSub = PermissionService().onPermissionsUpdated.listen((_) async {
+      final granted = await _permissions.hasStoragePermission();
+      if (granted && !_hasPermission) {
+        _hasPermission = true;
+        await loadVideos(silentBackground: _allVideos.isNotEmpty);
+      }
+    });
+
     // 1. सबसे पहले कैश्ड वीडियो तुरंत लोड करो (0ms Instant App Open - नो लोडिंग स्पिनर)
     final cached = await _scanner.getCachedVideos();
     if (cached.isNotEmpty) {
@@ -135,5 +151,12 @@ class VideoController extends ChangeNotifier {
     _folders = _scanner.groupVideosByFolder(_allVideos);
     _applyFilterAndSort();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _permissionSub?.cancel();
+    SystemControlsService().setVideoLibraryChangedHandler(null);
+    super.dispose();
   }
 }

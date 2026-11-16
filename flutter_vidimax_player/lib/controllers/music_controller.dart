@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -9,7 +10,7 @@ import '../services/system_controls_service.dart';
 
 enum MusicLoopMode { off, all, single }
 
-class MusicController extends ChangeNotifier {
+class MusicController extends ChangeNotifier with WidgetsBindingObserver {
   final MusicScannerService _scannerService = MusicScannerService();
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -106,11 +107,74 @@ class MusicController extends ChangeNotifier {
   bool _lastNotifiedPlaying = false;
   String? _lastNotifiedSongId;
 
+  StreamSubscription<void>? _permissionSub;
+  bool _isScanning = false;
+  bool _pendingRescan = false;
+  DateTime? _lastScanAt;
+
   Future<void> init() async {
+    WidgetsBinding.instance.addObserver(this);
     SystemControlsService().setMusicMediaActionHandler(_handleMediaNotificationAction);
+    SystemControlsService().setAudioLibraryChangedHandler(() {
+      scanMusic(silent: _allSongs.isNotEmpty);
+    });
+    _permissionSub = PermissionService().onPermissionsUpdated.listen((_) {
+      checkPermissionAndAutoRefresh();
+    });
+
     _initAudioListeners();
     await _loadFavorites();
-    await scanMusic();
+
+    // 1. Load cached tracks immediately (0ms UI display)
+    final cached = await _scannerService.getCachedMusic();
+    if (cached.isNotEmpty) {
+      _allSongs = cached.map((s) => s.copyWith(isFavorite: _favoriteIds.contains(s.id))).toList();
+      if (_playlist.isEmpty) {
+        _playlist = List.from(_allSongs);
+      }
+      notifyListeners();
+    }
+
+    // 2. Ensure audio/storage permission is checked/awaited cleanly before initial full scan
+    final permService = PermissionService();
+    bool hasPerm = await permService.hasAudioPermission();
+    if (!hasPerm) {
+      await permService.requestStoragePermissions();
+      hasPerm = await permService.hasAudioPermission();
+    }
+
+    // 3. Perform complete MediaStore + directory scan
+    await scanMusic(silent: _allSongs.isNotEmpty);
+
+    // 4. Short delayed backup scan in case OS MediaStore finished indexing just after grant
+    if (hasPerm && _allSongs.every((s) => s.id.startsWith('sample_'))) {
+      Future.delayed(const Duration(milliseconds: 900), () {
+        scanMusic(silent: true);
+      });
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      checkPermissionAndAutoRefresh();
+    }
+  }
+
+  Future<void> checkPermissionAndAutoRefresh() async {
+    final hasPerm = await PermissionService().hasAudioPermission();
+    if (hasPerm) {
+      await scanMusic(silent: _allSongs.isNotEmpty);
+    }
+  }
+
+  Future<void> refreshIfNeeded() async {
+    final now = DateTime.now();
+    final stale = _lastScanAt == null || now.difference(_lastScanAt!).inSeconds >= 8;
+    final hasOnlySamples = _allSongs.isNotEmpty && _allSongs.every((s) => s.id.startsWith('sample_'));
+    if (stale || _allSongs.isEmpty || hasOnlySamples) {
+      await checkPermissionAndAutoRefresh();
+    }
   }
 
   void _handleMediaNotificationAction(String action) {
@@ -224,21 +288,49 @@ class MusicController extends ChangeNotifier {
     });
   }
 
-  Future<void> scanMusic() async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> scanMusic({bool silent = false}) async {
+    if (_isScanning) {
+      _pendingRescan = true;
+      return;
+    }
+    _isScanning = true;
+
+    if (!silent && _allSongs.isEmpty) {
+      _isLoading = true;
+      notifyListeners();
+    }
 
     try {
-      final scanned = await _scannerService.scanDeviceMusic();
-      _allSongs = scanned.map((s) => s.copyWith(isFavorite: _favoriteIds.contains(s.id))).toList();
-      if (_playlist.isEmpty && _allSongs.isNotEmpty) {
-        _playlist = List.from(_allSongs);
+      final hasPerm = await PermissionService().hasAudioPermission();
+      final scanned = await _scannerService.scanDeviceMusic(allowSampleFallback: hasPerm);
+      _lastScanAt = DateTime.now();
+
+      final mapped = scanned.map((s) => s.copyWith(isFavorite: _favoriteIds.contains(s.id))).toList();
+      final hasRealMapped = mapped.isNotEmpty && !mapped.every((s) => s.id.startsWith('sample_'));
+      final currentlyHasReal = _allSongs.isNotEmpty && !_allSongs.every((s) => s.id.startsWith('sample_'));
+
+      if (hasRealMapped || (!currentlyHasReal && mapped.isNotEmpty) || (hasPerm && scanned.isEmpty)) {
+        _allSongs = mapped;
+
+        final playlistOnlySamples = _playlist.isNotEmpty && _playlist.every((s) => s.id.startsWith('sample_'));
+        if (_playlist.isEmpty || (hasRealMapped && (playlistOnlySamples || currentSong == null))) {
+          _playlist = List.from(_allSongs);
+          if (currentSong == null) {
+            _currentIndex = -1;
+          }
+        }
       }
     } catch (e) {
       debugPrint("Error scanning music: $e");
     } finally {
       _isLoading = false;
+      _isScanning = false;
       notifyListeners();
+
+      if (_pendingRescan) {
+        _pendingRescan = false;
+        Future.microtask(() => scanMusic(silent: true));
+      }
     }
   }
 
@@ -420,6 +512,9 @@ class MusicController extends ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _permissionSub?.cancel();
+    SystemControlsService().setAudioLibraryChangedHandler(null);
     _audioPlayer.dispose();
     super.dispose();
   }

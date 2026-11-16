@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,8 +8,24 @@ class PermissionService {
   factory PermissionService() => _instance;
   PermissionService._internal();
 
+  Future<bool>? _inFlightStorageRequest;
+  final StreamController<void> _permissionsUpdatedController = StreamController<void>.broadcast();
+
+  Stream<void> get onPermissionsUpdated => _permissionsUpdatedController.stream;
+
   /// Check and request media storage permissions smoothly across all Android versions
-  Future<bool> requestStoragePermissions() async {
+  /// Safe to invoke concurrently from multiple controllers without overlapping OS prompts.
+  Future<bool> requestStoragePermissions() {
+    _inFlightStorageRequest ??= _performStoragePermissionRequest().whenComplete(() {
+      _inFlightStorageRequest = null;
+      if (!_permissionsUpdatedController.isClosed) {
+        _permissionsUpdatedController.add(null);
+      }
+    });
+    return _inFlightStorageRequest!;
+  }
+
+  Future<bool> _performStoragePermissionRequest() async {
     if (!Platform.isAndroid) return true;
 
     final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -23,13 +40,14 @@ class PermissionService {
       ].request();
 
       final videoGranted = statuses[Permission.videos]?.isGranted ?? false;
-      
+      final audioGranted = statuses[Permission.audio]?.isGranted ?? false;
+
       // Also request manageExternalStorage if not granted to ensure hidden WhatsApp .Statuses and full folders are accessible
       if (!await Permission.manageExternalStorage.isGranted) {
         await Permission.manageExternalStorage.request();
       }
 
-      return videoGranted || (await Permission.manageExternalStorage.isGranted);
+      return videoGranted || audioGranted || (await Permission.manageExternalStorage.isGranted);
     } else if (sdkInt >= 30) {
       // Android 11 & 12 (API 30, 31, 32)
       final storageStatus = await Permission.storage.request();
@@ -48,19 +66,26 @@ class PermissionService {
   Future<bool> requestManageStoragePermission() async {
     if (!Platform.isAndroid) return true;
     final androidInfo = await DeviceInfoPlugin().androidInfo;
+    bool granted = false;
     if (androidInfo.version.sdkInt >= 30) {
       final status = await Permission.manageExternalStorage.status;
       if (!status.isGranted) {
         final result = await Permission.manageExternalStorage.request();
-        return result.isGranted;
+        granted = result.isGranted;
+      } else {
+        granted = true;
       }
-      return true;
+    } else {
+      final status = await Permission.storage.request();
+      granted = status.isGranted;
     }
-    final status = await Permission.storage.request();
-    return status.isGranted;
+    if (granted && !_permissionsUpdatedController.isClosed) {
+      _permissionsUpdatedController.add(null);
+    }
+    return granted;
   }
 
-  /// Check current permission status
+  /// Check current video/storage permission status
   Future<bool> hasStoragePermission() async {
     if (!Platform.isAndroid) return true;
     final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -72,6 +97,22 @@ class PermissionService {
 
     if (sdkInt >= 33) {
       return await Permission.videos.isGranted;
+    }
+    return await Permission.storage.isGranted;
+  }
+
+  /// Check current audio/music permission status across all Android versions
+  Future<bool> hasAudioPermission() async {
+    if (!Platform.isAndroid) return true;
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final sdkInt = androidInfo.version.sdkInt;
+
+    if (sdkInt >= 30 && await Permission.manageExternalStorage.isGranted) {
+      return true;
+    }
+
+    if (sdkInt >= 33) {
+      return await Permission.audio.isGranted;
     }
     return await Permission.storage.isGranted;
   }

@@ -191,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: Icon(Icons.info_outline_rounded, color: AppTheme.accent(context)),
                   title: const Text('Rox Player', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Version 1.0.1 (Production Build) · Offline Media Suite'),
+                  subtitle: const Text('Version 1.0.2 (Production Build) · Offline Media Suite'),
                 ),
               ],
             ),

@@ -472,7 +472,7 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Saved to Gallery (/Pictures/RoxPlayer_Status/)'),
+                              content: Text('Saved to Gallery!'),
                               duration: Duration(seconds: 2),
                             ),
                           );

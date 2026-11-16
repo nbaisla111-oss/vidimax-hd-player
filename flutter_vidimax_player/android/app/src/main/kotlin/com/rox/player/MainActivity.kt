@@ -1,15 +1,18 @@
 package com.rox.player
 
+import android.Manifest
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
 import android.content.BroadcastReceiver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
@@ -17,8 +20,13 @@ import android.media.AudioManager
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Rational
@@ -30,6 +38,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
@@ -65,6 +76,48 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val audioNotifyRunnable = Runnable {
+        methodChannel?.invokeMethod("onAudioLibraryChanged", null)
+    }
+    private val videoNotifyRunnable = Runnable {
+        methodChannel?.invokeMethod("onVideoLibraryChanged", null)
+    }
+    private val audioContentObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            scheduleAudioLibraryChangedNotification()
+        }
+
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+            scheduleAudioLibraryChangedNotification()
+        }
+    }
+    private val videoContentObserver = object : ContentObserver(mainHandler) {
+        override fun onChange(selfChange: Boolean) {
+            super.onChange(selfChange)
+            scheduleVideoLibraryChangedNotification()
+        }
+
+        override fun onChange(selfChange: Boolean, uri: Uri?) {
+            super.onChange(selfChange, uri)
+            scheduleVideoLibraryChangedNotification()
+        }
+    }
+    private var audioObserverRegistered = false
+    private var videoObserverRegistered = false
+
+    private fun scheduleAudioLibraryChangedNotification() {
+        mainHandler.removeCallbacks(audioNotifyRunnable)
+        mainHandler.postDelayed(audioNotifyRunnable, 800L)
+    }
+
+    private fun scheduleVideoLibraryChangedNotification() {
+        mainHandler.removeCallbacks(videoNotifyRunnable)
+        mainHandler.postDelayed(videoNotifyRunnable, 800L)
+    }
+
     override fun getRenderMode(): RenderMode {
         return RenderMode.texture
     }
@@ -87,6 +140,24 @@ class MainActivity : FlutterActivity() {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(mediaActionReceiver, mediaFilter)
         }
+        try {
+            contentResolver.registerContentObserver(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                true,
+                audioContentObserver
+            )
+            audioObserverRegistered = true
+        } catch (_: Exception) {
+        }
+        try {
+            contentResolver.registerContentObserver(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                true,
+                videoContentObserver
+            )
+            videoObserverRegistered = true
+        } catch (_: Exception) {
+        }
     }
 
     override fun onStop() {
@@ -103,6 +174,22 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         MediaPlaybackService.actionListener = null
+        mainHandler.removeCallbacks(audioNotifyRunnable)
+        mainHandler.removeCallbacks(videoNotifyRunnable)
+        if (audioObserverRegistered) {
+            try {
+                contentResolver.unregisterContentObserver(audioContentObserver)
+            } catch (_: Exception) {
+            }
+            audioObserverRegistered = false
+        }
+        if (videoObserverRegistered) {
+            try {
+                contentResolver.unregisterContentObserver(videoContentObserver)
+            } catch (_: Exception) {
+            }
+            videoObserverRegistered = false
+        }
         try {
             unregisterReceiver(pipActionReceiver)
         } catch (_: Exception) {
@@ -209,6 +296,44 @@ class MainActivity : FlutterActivity() {
                     mediaWorker.execute {
                         val infoMap = extractAudiosMediaInfoBatch(paths)
                         runOnUiThread { result.success(infoMap) }
+                    }
+                }
+                "queryAllDeviceAudio" -> {
+                    mediaWorker.execute {
+                        val tracks = queryAllDeviceAudioTracks()
+                        runOnUiThread { result.success(tracks) }
+                    }
+                }
+                "saveMediaToGallery" -> {
+                    val sourcePath = call.argument<String>("sourcePath")
+                    val fileName = call.argument<String>("fileName")
+                    val isVideo = call.argument<Boolean>("isVideo") ?: false
+                    if (sourcePath.isNullOrBlank()) {
+                        result.success(mapOf("success" to false, "error" to "Empty source path"))
+                        return@setMethodCallHandler
+                    }
+                    mediaWorker.execute {
+                        val saveResult = saveMediaFileToGallery(sourcePath, fileName, isVideo)
+                        runOnUiThread { result.success(saveResult) }
+                    }
+                }
+                "scanMediaFile" -> {
+                    val path = call.argument<String>("path")
+                    val mimeType = call.argument<String>("mimeType")
+                    if (path.isNullOrBlank()) {
+                        result.success(false)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        val mimeArray = if (!mimeType.isNullOrBlank()) arrayOf(mimeType) else null
+                        MediaScannerConnection.scanFile(
+                            applicationContext,
+                            arrayOf(path),
+                            mimeArray
+                        ) { _, _ -> }
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
                     }
                 }
                 "updateMediaNotification" -> {
@@ -737,5 +862,384 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private fun resolveMediaMimeType(fileName: String, isVideo: Boolean): String {
+        val ext = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+        return when {
+            isVideo -> when (ext) {
+                "mp4", "m4v" -> "video/mp4"
+                "3gp" -> "video/3gpp"
+                "mkv" -> "video/x-matroska"
+                "webm" -> "video/webm"
+                "avi" -> "video/x-msvideo"
+                "mov" -> "video/quicktime"
+                else -> "video/mp4"
+            }
+            else -> when (ext) {
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                "gif" -> "image/gif"
+                else -> "image/jpeg"
+            }
+        }
+    }
+
+    private fun saveMediaFileToGallery(
+        sourcePath: String,
+        requestedName: String?,
+        isVideo: Boolean
+    ): Map<String, Any?> {
+        val sourceFile = File(sourcePath)
+        if (!sourceFile.exists() || !sourceFile.canRead()) {
+            return mapOf("success" to false, "error" to "Source status file not accessible")
+        }
+
+        val cleanName = (requestedName?.takeIf { it.isNotBlank() } ?: sourceFile.name)
+        val mimeType = resolveMediaMimeType(cleanName, isVideo)
+        val albumFolder = "RoxPlayer_Status"
+        val nowMs = System.currentTimeMillis()
+        val nowSec = nowMs / 1000L
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val collection = if (isVideo) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            }
+            val baseDir = if (isVideo) Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_PICTURES
+            val relativePath = "$baseDir/$albumFolder"
+
+            // Reuse existing entry if exact file was already saved to prevent Gallery duplicates
+            try {
+                @Suppress("DEPRECATION")
+                val existingProjection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA, MediaStore.MediaColumns.SIZE)
+                val existingSelection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+                contentResolver.query(
+                    collection,
+                    existingProjection,
+                    existingSelection,
+                    arrayOf(cleanName, "$relativePath%"),
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val existingId = cursor.getLong(0)
+                        val existingDataIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                        val existingSizeIdx = cursor.getColumnIndex(MediaStore.MediaColumns.SIZE)
+                        val existingPath = if (existingDataIdx >= 0) cursor.getString(existingDataIdx) else null
+                        val existingSize = if (existingSizeIdx >= 0) cursor.getLong(existingSizeIdx) else 0L
+                        val existingUri = ContentUris.withAppendedId(collection, existingId)
+                        if (existingSize == sourceFile.length() && !existingPath.isNullOrBlank() && File(existingPath).exists()) {
+                            MediaScannerConnection.scanFile(
+                                applicationContext,
+                                arrayOf(existingPath),
+                                arrayOf(mimeType),
+                                null
+                            )
+                            return mapOf(
+                                "success" to true,
+                                "savedPath" to existingPath,
+                                "uri" to existingUri.toString()
+                            )
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            }
+
+            try {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, cleanName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    put(MediaStore.MediaColumns.DATE_ADDED, nowSec)
+                    put(MediaStore.MediaColumns.DATE_MODIFIED, nowSec)
+                    if (isVideo) {
+                        put(MediaStore.Video.Media.DATE_TAKEN, nowMs)
+                    } else {
+                        put(MediaStore.Images.Media.DATE_TAKEN, nowMs)
+                    }
+                    put(MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+
+                val itemUri = contentResolver.insert(collection, values)
+                if (itemUri != null) {
+                    contentResolver.openOutputStream(itemUri, "w")?.use { outStream ->
+                        FileInputStream(sourceFile).use { inStream ->
+                            inStream.copyTo(outStream)
+                        }
+                        outStream.flush()
+                    } ?: throw IllegalStateException("Unable to open MediaStore output stream")
+
+                    val publishValues = ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                        put(MediaStore.MediaColumns.DATE_MODIFIED, System.currentTimeMillis() / 1000L)
+                    }
+                    contentResolver.update(itemUri, publishValues, null, null)
+
+                    var resolvedPath: String? = null
+                    try {
+                        @Suppress("DEPRECATION")
+                        contentResolver.query(
+                            itemUri,
+                            arrayOf(MediaStore.MediaColumns.DATA),
+                            null,
+                            null,
+                            null
+                        )?.use { c ->
+                            if (c.moveToFirst()) {
+                                val idx = c.getColumnIndex(MediaStore.MediaColumns.DATA)
+                                if (idx >= 0) resolvedPath = c.getString(idx)
+                            }
+                        }
+                    } catch (_: Exception) {
+                    }
+
+                    val fallbackPublicPath = File(
+                        Environment.getExternalStoragePublicDirectory(baseDir),
+                        "$albumFolder/$cleanName"
+                    ).absolutePath
+                    val finalPath = resolvedPath ?: fallbackPublicPath
+
+                    MediaScannerConnection.scanFile(
+                        applicationContext,
+                        arrayOf(finalPath),
+                        arrayOf(mimeType),
+                        null
+                    )
+
+                    return mapOf(
+                        "success" to true,
+                        "savedPath" to finalPath,
+                        "uri" to itemUri.toString()
+                    )
+                }
+            } catch (_: Exception) {
+                // Fall through to legacy direct public copy + MediaScannerConnection below
+            }
+        }
+
+        // Legacy Android 7-9 OR fallback path: write to public Pictures / Movies + MediaScannerConnection
+        return try {
+            val baseDirType = if (isVideo) Environment.DIRECTORY_MOVIES else Environment.DIRECTORY_PICTURES
+            val targetDir = File(Environment.getExternalStoragePublicDirectory(baseDirType), albumFolder)
+            if (!targetDir.exists()) {
+                targetDir.mkdirs()
+            }
+            val destFile = File(targetDir, cleanName)
+            FileInputStream(sourceFile).use { inStream ->
+                FileOutputStream(destFile).use { outStream ->
+                    inStream.copyTo(outStream)
+                    outStream.flush()
+                }
+            }
+            destFile.setLastModified(nowMs)
+
+            @Suppress("DEPRECATION")
+            val contentUri = if (isVideo) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            try {
+                @Suppress("DEPRECATION")
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DATA, destFile.absolutePath)
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, cleanName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    put(MediaStore.MediaColumns.SIZE, destFile.length())
+                    put(MediaStore.MediaColumns.DATE_ADDED, nowSec)
+                    put(MediaStore.MediaColumns.DATE_MODIFIED, nowSec)
+                }
+                contentResolver.insert(contentUri, values)
+            } catch (_: Exception) {
+            }
+
+            MediaScannerConnection.scanFile(
+                applicationContext,
+                arrayOf(destFile.absolutePath),
+                arrayOf(mimeType),
+                null
+            )
+
+            @Suppress("DEPRECATION")
+            sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.fromFile(destFile)))
+
+            mapOf(
+                "success" to true,
+                "savedPath" to destFile.absolutePath,
+                "uri" to Uri.fromFile(destFile).toString()
+            )
+        } catch (e: Exception) {
+            mapOf("success" to false, "error" to (e.message ?: "Failed to save to Gallery"))
+        }
+    }
+
+    private fun queryAllDeviceAudioTracks(): List<Map<String, Any>> {
+        val tracks = ArrayList<Map<String, Any>>()
+        val seenPaths = HashSet<String>()
+        val supportedExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg", "opus", "wma")
+
+        val hasAudioPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED ||
+                Environment.isExternalStorageManager()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED ||
+                Environment.isExternalStorageManager()
+        } else {
+            checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (!hasAudioPerm) {
+            return tracks
+        }
+
+        try {
+            @Suppress("DEPRECATION")
+            val projectionList = mutableListOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.SIZE,
+                MediaStore.Audio.Media.DATE_MODIFIED,
+                MediaStore.Audio.Media.DATE_ADDED,
+                MediaStore.Audio.Media.MIME_TYPE,
+                MediaStore.Audio.Media.IS_MUSIC
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                projectionList.add(MediaStore.Audio.Media.IS_PENDING)
+            }
+
+            val selection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                "(${MediaStore.Audio.Media.IS_PENDING} IS NULL OR ${MediaStore.Audio.Media.IS_PENDING} = 0)"
+            } else {
+                null
+            }
+            val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC, ${MediaStore.Audio.Media.DATE_MODIFIED} DESC"
+
+            contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projectionList.toTypedArray(),
+                selection,
+                null,
+                sortOrder
+            )?.use { cursor ->
+                val dataIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                val nameIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                val titleIdx = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                val artistIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val albumIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val durIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val sizeIdx = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                val modIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
+                val addIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+                val mimeIdx = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+                val musicIdx = cursor.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+
+                while (cursor.moveToNext()) {
+                    val filePath = if (dataIdx >= 0) cursor.getString(dataIdx) else null
+                    if (filePath.isNullOrBlank()) continue
+                    if (!seenPaths.add(filePath)) continue
+
+                    // Skip Android trashed files, app-private cache files, or system tones
+                    val fileName = (if (nameIdx >= 0) cursor.getString(nameIdx) else null)
+                        ?: File(filePath).name
+                    val lowerPath = filePath.lowercase(Locale.ROOT)
+                    val isMusicFlag = if (musicIdx >= 0) cursor.getInt(musicIdx) else 0
+                    if (fileName.startsWith(".trashed-") ||
+                        fileName.startsWith(".") ||
+                        lowerPath.contains("/android/data/") ||
+                        lowerPath.contains("/android/obb/") ||
+                        (isMusicFlag == 0 && (lowerPath.contains("/notifications/") ||
+                            lowerPath.contains("/ringtones/") ||
+                            lowerPath.contains("/alarms/")))) {
+                        continue
+                    }
+
+                    val ext = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                    val mime = if (mimeIdx >= 0) (cursor.getString(mimeIdx) ?: "") else ""
+                    val isAudioFormat = supportedExts.contains(ext) ||
+                        mime.startsWith("audio/", ignoreCase = true) ||
+                        isMusicFlag != 0
+                    if (!isAudioFormat) continue
+
+                    val fileObj = File(filePath)
+                    if (!fileObj.exists()) continue
+
+                    val sizeBytes = if (sizeIdx >= 0) cursor.getLong(sizeIdx) else fileObj.length()
+                    val effectiveSize = if (sizeBytes > 0L) sizeBytes else fileObj.length()
+                    if (effectiveSize < 8 * 1024) continue
+
+                    var durMs = if (durIdx >= 0) cursor.getLong(durIdx) else 0L
+                    var artist = if (artistIdx >= 0) (cursor.getString(artistIdx) ?: "") else ""
+                    var album = if (albumIdx >= 0) (cursor.getString(albumIdx) ?: "") else ""
+                    var title = if (titleIdx >= 0) (cursor.getString(titleIdx) ?: "") else ""
+
+                    if (durMs <= 0L) {
+                        val retriever = MediaMetadataRetriever()
+                        try {
+                            retriever.setDataSource(filePath)
+                            durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                ?.toLongOrNull() ?: 0L
+                            if (artist.isBlank() || artist == "<unknown>") {
+                                artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: ""
+                            }
+                            if (album.isBlank() || album == "<unknown>") {
+                                album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: ""
+                            }
+                            if (title.isBlank()) {
+                                title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
+                            }
+                        } catch (_: Exception) {
+                        } finally {
+                            try {
+                                retriever.release()
+                            } catch (_: Exception) {
+                            }
+                        }
+                    }
+
+                    val parentFolder = fileObj.parentFile?.name?.takeIf { it.isNotBlank() } ?: "Internal"
+                    if (title.isBlank()) {
+                        title = fileName.substringBeforeLast('.').replace(Regex("[_-]"), " ").trim()
+                            .ifBlank { fileName }
+                    }
+                    if (artist.isBlank() || artist == "<unknown>") {
+                        artist = if (parentFolder.contains("RoxPlayer") || parentFolder.contains("VidiMax")) {
+                            "Rox Extracted"
+                        } else {
+                            parentFolder
+                        }
+                    }
+                    if (album.isBlank() || album == "<unknown>") {
+                        album = parentFolder
+                    }
+
+                    val dateAddedSec = if (addIdx >= 0) cursor.getLong(addIdx) else 0L
+                    val dateModSec = if (modIdx >= 0) cursor.getLong(modIdx) else 0L
+                    val effectiveTsMs = when {
+                        dateModSec > 0L -> dateModSec * 1000L
+                        dateAddedSec > 0L -> dateAddedSec * 1000L
+                        else -> fileObj.lastModified()
+                    }
+
+                    tracks.add(
+                        mapOf(
+                            "path" to filePath,
+                            "title" to title.trim(),
+                            "artist" to artist.trim(),
+                            "album" to album.trim(),
+                            "folder" to parentFolder,
+                            "durationMs" to durMs.coerceAtLeast(0L),
+                            "size" to effectiveSize,
+                            "dateAddedMs" to effectiveTsMs
+                        )
+                    )
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        return tracks
     }
 }

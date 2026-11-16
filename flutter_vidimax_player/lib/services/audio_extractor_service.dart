@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'system_controls_service.dart';
 
 class AudioExtractorService {
   static final AudioExtractorService _instance = AudioExtractorService._internal();
@@ -32,6 +33,9 @@ class AudioExtractorService {
     if (await sourceVideo.exists()) {
       final bytes = await sourceVideo.readAsBytes();
       await outputFile.writeAsBytes(bytes.take(bytes.length ~/ 2).toList());
+      if (Platform.isAndroid) {
+        await SystemControlsService().scanMediaFile(outputPath, mimeType: 'audio/mpeg');
+      }
     }
 
     onProgress?.call(1.0);

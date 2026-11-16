@@ -13,6 +13,8 @@ class SystemControlsService {
   void Function(String action)? _onPipAction;
   VoidCallback? _onPlayerBackgrounded;
   void Function(String action)? _videoMediaActionHandler;
+  VoidCallback? _onAudioLibraryChanged;
+  VoidCallback? _onVideoLibraryChanged;
 
   SystemControlsService._internal() {
     _channel.setMethodCallHandler(_handleMethodCall);
@@ -22,6 +24,14 @@ class SystemControlsService {
 
   void setMusicMediaActionHandler(void Function(String action)? handler) {
     _musicMediaActionHandler = handler;
+  }
+
+  void setAudioLibraryChangedHandler(VoidCallback? handler) {
+    _onAudioLibraryChanged = handler;
+  }
+
+  void setVideoLibraryChangedHandler(VoidCallback? handler) {
+    _onVideoLibraryChanged = handler;
   }
 
   void setVideoHandlers({
@@ -64,6 +74,62 @@ class SystemControlsService {
           _musicMediaActionHandler?.call(action);
         }
         break;
+      case 'onAudioLibraryChanged':
+        _onAudioLibraryChanged?.call();
+        break;
+      case 'onVideoLibraryChanged':
+        _onVideoLibraryChanged?.call();
+        break;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllDeviceAudio() async {
+    try {
+      final raw = await _channel.invokeListMethod<dynamic>('queryAllDeviceAudio');
+      if (raw == null) return [];
+      final List<Map<String, dynamic>> parsed = [];
+      for (final item in raw) {
+        if (item is Map) {
+          parsed.add(Map<String, dynamic>.from(item));
+        }
+      }
+      return parsed;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> saveMediaToGallery({
+    required String sourcePath,
+    required String fileName,
+    required bool isVideo,
+  }) async {
+    try {
+      final raw = await _channel.invokeMapMethod<dynamic, dynamic>(
+        'saveMediaToGallery',
+        {
+          'sourcePath': sourcePath,
+          'fileName': fileName,
+          'isVideo': isVideo,
+        },
+      );
+      if (raw == null) return {'success': false};
+      return Map<String, dynamic>.from(raw);
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
+  Future<bool> scanMediaFile(String path, {String? mimeType}) async {
+    if (path.isEmpty) return false;
+    try {
+      final res = await _channel.invokeMethod<bool>(
+        'scanMediaFile',
+        {'path': path, 'mimeType': mimeType},
+      );
+      return res ?? false;
+    } catch (_) {
+      return false;
     }
   }
 

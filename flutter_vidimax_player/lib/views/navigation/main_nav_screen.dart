@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/music_controller.dart';
 import '../../utils/app_theme.dart';
 import '../home/home_screen.dart';
 import '../music/music_screen.dart';
@@ -25,6 +27,13 @@ class _MainNavScreenState extends State<MainNavScreen> {
     ToolsScreen(),
     SettingsScreen(),
   ];
+
+  void _onTabSelected(int index) {
+    setState(() => _currentIndex = index);
+    if (index == 1) {
+      Provider.of<MusicController>(context, listen: false).refreshIfNeeded();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +103,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () => _onTabSelected(index),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(

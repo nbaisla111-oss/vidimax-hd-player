@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import '../models/status_item_model.dart';
+import 'system_controls_service.dart';
 
 class StatusSaverService {
   static final StatusSaverService _instance = StatusSaverService._internal();
@@ -39,6 +40,21 @@ class StatusSaverService {
     '/storage/emulated/0/WhatsApp/Media/WhatsApp Video/.Statuses',
     '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video/.Statuses',
   ];
+
+  Future<bool> _isStatusAlreadySaved(String fileName, bool isVideo) async {
+    final candidates = <String>[
+      if (isVideo) '/storage/emulated/0/Movies/RoxPlayer_Status/$fileName',
+      '/storage/emulated/0/Pictures/RoxPlayer_Status/$fileName',
+      '/storage/emulated/0/DCIM/RoxPlayer_Status/$fileName',
+      '/storage/emulated/0/Pictures/VidiMax_Status/$fileName',
+    ];
+    for (final path in candidates) {
+      try {
+        if (await File(path).exists()) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
 
   /// Scan status directory for photos and videos securely
   Future<List<StatusItemModel>> fetchStatuses({StatusAppSource? filterSource}) async {
@@ -86,11 +102,7 @@ class StatusSaverService {
                 }
 
                 uniquePaths.add(filePath);
-
-                final savedDir = Directory('/storage/emulated/0/Pictures/RoxPlayer_Status');
-                final savedFile = File(p.join(savedDir.path, fileName));
-                final legacySavedFile = File(p.join('/storage/emulated/0/Pictures/VidiMax_Status', fileName));
-                final isSaved = await savedFile.exists() || await legacySavedFile.exists();
+                final isSaved = await _isStatusAlreadySaved(fileName, isVideo);
 
                 list.add(
                   StatusItemModel(
@@ -118,18 +130,43 @@ class StatusSaverService {
     return list;
   }
 
-  /// Save status permanently to device gallery
+  /// Save status permanently to device gallery via Android MediaStore & MediaScanner
   Future<File> saveStatusToGallery(StatusItemModel status) async {
-    final targetDir = Directory('/storage/emulated/0/Pictures/RoxPlayer_Status');
+    final fileName = p.basename(status.path);
+    final isVideo = status.mediaType == StatusMediaType.video;
+
+    if (Platform.isAndroid) {
+      final result = await SystemControlsService().saveMediaToGallery(
+        sourcePath: status.path,
+        fileName: fileName,
+        isVideo: isVideo,
+      );
+      if (result['success'] == true) {
+        final savedPath = result['savedPath'] as String?;
+        if (savedPath != null && savedPath.isNotEmpty) {
+          return File(savedPath);
+        }
+      }
+    }
+
+    // Fallback: save to public directory and invoke MediaScanner directly
+    final targetDir = Directory(
+      isVideo
+          ? '/storage/emulated/0/Movies/RoxPlayer_Status'
+          : '/storage/emulated/0/Pictures/RoxPlayer_Status',
+    );
     if (!await targetDir.exists()) {
       await targetDir.create(recursive: true);
     }
 
     final originalFile = File(status.path);
-    final fileName = p.basename(status.path);
     final targetPath = p.join(targetDir.path, fileName);
+    final copied = await originalFile.copy(targetPath);
 
-    return await originalFile.copy(targetPath);
+    if (Platform.isAndroid) {
+      await SystemControlsService().scanMediaFile(copied.path);
+    }
+    return copied;
   }
 
   /// Share status to other apps
