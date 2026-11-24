@@ -11,11 +11,91 @@ class MusicScannerService {
   factory MusicScannerService() => _instance;
   MusicScannerService._internal();
 
-  static const String _cacheKey = 'rox_cached_music_v1';
+  static const String _cacheKey = 'rox_cached_music_v2';
+
+  static final RegExp _whatsappAudioNameRegex = RegExp(
+    r'^(aud|ptt)-?\d{6,8}-wa\d+',
+    caseSensitive: false,
+  );
 
   final List<String> supportedAudioExtensions = [
     '.mp3', '.m4a', '.wav', '.aac', '.flac', '.ogg', '.opus', '.wma'
   ];
+
+  String _canonicalPathKey(String rawPath) {
+    String resolved = rawPath;
+    try {
+      resolved = File(rawPath).resolveSymbolicLinksSync();
+    } catch (_) {}
+    String normalized = p.normalize(resolved).replaceAll('\\', '/').trim();
+    final lower = normalized.toLowerCase();
+    const prefixes = [
+      '/sdcard/',
+      '/mnt/sdcard/',
+      '/storage/self/primary/',
+      '/mnt/user/0/primary/',
+    ];
+    for (final prefix in prefixes) {
+      if (lower.startsWith(prefix)) {
+        normalized = '/storage/emulated/0/${normalized.substring(prefix.length)}';
+        break;
+      }
+    }
+    return normalized.toLowerCase();
+  }
+
+  bool _isExcludedAudioPath(String rawPath) {
+    final lowerPath = _canonicalPathKey(rawPath);
+    final fileName = p.basename(rawPath).toLowerCase();
+    if (fileName.startsWith('.') ||
+        fileName.startsWith('.trashed-') ||
+        lowerPath.contains('/.') ||
+        lowerPath.contains('/android/data/') ||
+        lowerPath.contains('/android/obb/') ||
+        lowerPath.contains('/notifications/') ||
+        lowerPath.contains('/ringtones/') ||
+        lowerPath.contains('/alarms/') ||
+        lowerPath.contains('/ui/') ||
+        lowerPath.contains('/whatsapp') ||
+        lowerPath.contains('com.whatsapp') ||
+        _whatsappAudioNameRegex.hasMatch(fileName) ||
+        lowerPath.contains('/callrecordings') ||
+        lowerPath.contains('/call recordings') ||
+        lowerPath.contains('/call_rec') ||
+        lowerPath.contains('/callrecord') ||
+        lowerPath.contains('/voicemail')) {
+      return true;
+    }
+    return false;
+  }
+
+  bool _hasNomediaAncestor(String filePath, Map<String, bool> cache) {
+    String current = p.dirname(filePath);
+    for (int depth = 0; depth < 10; depth++) {
+      final lowerDir = current.toLowerCase();
+      if (lowerDir.isEmpty ||
+          lowerDir == '/' ||
+          lowerDir == '/storage' ||
+          lowerDir == '/storage/emulated/0') {
+        break;
+      }
+      final cached = cache[current];
+      if (cached != null) {
+        if (cached) return true;
+      } else {
+        bool hasNomedia = false;
+        try {
+          hasNomedia = File(p.join(current, '.nomedia')).existsSync();
+        } catch (_) {}
+        cache[current] = hasNomedia;
+        if (hasNomedia) return true;
+      }
+      final parent = p.dirname(current);
+      if (parent == current) break;
+      current = parent;
+    }
+    return false;
+  }
 
   /// Load cached local audio tracks for instant 0ms launch
   Future<List<MusicModel>> getCachedMusic() async {
@@ -25,18 +105,26 @@ class MusicScannerService {
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final List<dynamic> decoded = jsonDecode(jsonStr);
         final list = <MusicModel>[];
+        final seenCanonical = <String>{};
+        final seenSigs = <String>{};
         for (final item in decoded) {
           final path = item['path'] as String? ?? '';
           if (path.isEmpty || path.startsWith('http')) continue;
+          if (_isExcludedAudioPath(path)) continue;
           if (!File(path).existsSync()) continue;
+          final canonical = _canonicalPathKey(path);
+          if (!seenCanonical.add(canonical)) continue;
+          final size = (item['size'] as num?)?.toInt() ?? 0;
+          final sig = '${p.basename(path).toLowerCase()}_$size';
+          if (!seenSigs.add(sig)) continue;
           list.add(
             MusicModel(
-              id: item['id'] ?? path.hashCode.toString(),
+              id: item['id'] ?? canonical.hashCode.toString(),
               title: item['title'] ?? '',
               artist: item['artist'] ?? 'Unknown Artist',
               album: item['album'] ?? '',
               path: path,
-              size: (item['size'] as num?)?.toInt() ?? 0,
+              size: size,
               duration: Duration(milliseconds: (item['durationMs'] as num?)?.toInt() ?? 0),
               folder: item['folder'] ?? 'Internal',
               dateAdded: DateTime.fromMillisecondsSinceEpoch(
@@ -73,7 +161,9 @@ class MusicScannerService {
   /// Complete scan of device audio via Android MediaStore + direct storage directories
   Future<List<MusicModel>> scanDeviceMusic({bool allowSampleFallback = false}) async {
     final List<MusicModel> musicList = [];
-    final Set<String> seenPaths = {};
+    final Set<String> seenCanonicalPaths = {};
+    final Set<String> seenSignatures = {};
+    final Map<String, bool> nomediaCache = {};
     final List<MusicModel> directOnlyTracks = [];
 
     // 1. Primary source on Android: query MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
@@ -81,9 +171,14 @@ class MusicScannerService {
       final storeTracks = await SystemControlsService().queryAllDeviceAudio();
       for (final item in storeTracks) {
         final rawPath = item['path'] as String? ?? '';
-        if (rawPath.isEmpty) continue;
-        final normalizedPath = p.normalize(rawPath);
-        if (!seenPaths.add(normalizedPath)) continue;
+        if (rawPath.isEmpty || _isExcludedAudioPath(rawPath)) continue;
+
+        final canonicalKey = _canonicalPathKey(rawPath);
+        if (!seenCanonicalPaths.add(canonicalKey)) continue;
+
+        final size = (item['size'] as num?)?.toInt() ?? 0;
+        final sig = '${p.basename(rawPath).toLowerCase()}_$size';
+        if (!seenSignatures.add(sig)) continue;
 
         final folder = (item['folder'] as String?)?.trim();
         final safeFolder = (folder != null && folder.isNotEmpty) ? folder : 'Internal';
@@ -96,12 +191,11 @@ class MusicScannerService {
         final rawAlbum = (item['album'] as String?)?.trim() ?? '';
         final safeAlbum = rawAlbum.isNotEmpty ? rawAlbum : safeFolder;
         final durMs = (item['durationMs'] as num?)?.toInt() ?? 0;
-        final size = (item['size'] as num?)?.toInt() ?? 0;
         final dateAddedMs = (item['dateAddedMs'] as num?)?.toInt() ?? DateTime.now().millisecondsSinceEpoch;
 
         musicList.add(
           MusicModel(
-            id: rawPath.hashCode.toString(),
+            id: canonicalKey.hashCode.toString(),
             title: safeTitle,
             artist: safeArtist,
             album: safeAlbum,
@@ -115,22 +209,17 @@ class MusicScannerService {
       }
     }
 
-    // 2. Supplement with direct directory scan to pick up freshly created/unindexed files
+    // 2. Supplement with direct directory scan to pick up freshly created/unindexed music files
     final targetDirs = [
       Directory('/storage/emulated/0/Music'),
-      Directory('/storage/emulated/0/Music/RoxPlayer'),
-      Directory('/storage/emulated/0/Music/VidiMax'),
       Directory('/storage/emulated/0/Download'),
       Directory('/storage/emulated/0/Quick Share'),
       Directory('/storage/emulated/0/Audio'),
       Directory('/storage/emulated/0/Podcasts'),
       Directory('/storage/emulated/0/Recordings'),
       Directory('/storage/emulated/0/Bluetooth'),
-      Directory('/storage/emulated/0/Telegram/Telegram Audio'),
       Directory('/storage/emulated/0/Snaptube/download'),
       Directory('/storage/emulated/0/Vidmate/download'),
-      Directory('/storage/emulated/0/WhatsApp/Media/WhatsApp Audio'),
-      Directory('/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Audio'),
     ];
 
     try {
@@ -144,64 +233,80 @@ class MusicScannerService {
           await for (final entity in dir.list(recursive: true, followLinks: false)) {
             if (entity is File) {
               final ext = p.extension(entity.path).toLowerCase();
-              final fileName = p.basename(entity.path);
-              if (fileName.startsWith('.') || fileName.startsWith('.trashed-')) {
-                continue;
-              }
-              final normalizedPath = p.normalize(entity.path);
-              if (supportedAudioExtensions.contains(ext) && !seenPaths.contains(normalizedPath)) {
-                try {
-                  final stat = await entity.stat();
-                  if (stat.size < 8 * 1024) continue;
-                  seenPaths.add(normalizedPath);
-                  final folderName = p.basename(p.dirname(entity.path));
-                  final title = p.basenameWithoutExtension(fileName);
+              if (!supportedAudioExtensions.contains(ext)) continue;
+              if (_isExcludedAudioPath(entity.path)) continue;
+              if (_hasNomediaAncestor(entity.path, nomediaCache)) continue;
 
-                  // Initial estimate replaced immediately by native metadata below
-                  final estimatedSeconds = (stat.size / (192 * 1024 / 8)).clamp(15.0, 3600.0).toInt();
+              final canonicalKey = _canonicalPathKey(entity.path);
+              if (seenCanonicalPaths.contains(canonicalKey)) continue;
 
-                  final track = MusicModel(
-                    id: entity.path.hashCode.toString(),
-                    title: title.replaceAll(RegExp(r'[_-]'), ' '),
-                    artist: (folderName.contains('RoxPlayer') || folderName.contains('VidiMax'))
-                        ? 'Rox Extracted'
-                        : (folderName.isEmpty ? 'Device Audio' : folderName),
-                    album: folderName,
-                    path: entity.path,
-                    size: stat.size,
-                    duration: Duration(seconds: estimatedSeconds),
-                    folder: folderName.isEmpty ? 'Internal' : folderName,
-                    dateAdded: stat.modified,
-                  );
-                  directOnlyTracks.add(track);
-                } catch (_) {}
-              }
+              try {
+                final stat = await entity.stat();
+                if (stat.size < 8 * 1024) continue;
+
+                final fileName = p.basename(entity.path);
+                final sig = '${fileName.toLowerCase()}_${stat.size}';
+                if (seenSignatures.contains(sig)) continue;
+
+                seenCanonicalPaths.add(canonicalKey);
+                seenSignatures.add(sig);
+
+                final folderName = p.basename(p.dirname(entity.path));
+                final title = p.basenameWithoutExtension(fileName);
+
+                // Initial estimate replaced immediately by native metadata below
+                final estimatedSeconds = (stat.size / (192 * 1024 / 8)).clamp(15.0, 3600.0).toInt();
+
+                final track = MusicModel(
+                  id: canonicalKey.hashCode.toString(),
+                  title: title.replaceAll(RegExp(r'[_-]'), ' '),
+                  artist: (folderName.contains('RoxPlayer') || folderName.contains('VidiMax'))
+                      ? 'Rox Extracted'
+                      : (folderName.isEmpty ? 'Device Audio' : folderName),
+                  album: folderName,
+                  path: entity.path,
+                  size: stat.size,
+                  duration: Duration(seconds: estimatedSeconds),
+                  folder: folderName.isEmpty ? 'Internal' : folderName,
+                  dateAdded: stat.modified,
+                );
+                directOnlyTracks.add(track);
+              } catch (_) {}
             }
           }
         } catch (_) {}
       }
     }
 
-    // Hydrate real durations, artist, and album tags natively only for direct-scanned extras
+    // Hydrate real durations, title, artist, and album tags natively for direct-scanned extras
     if (directOnlyTracks.isNotEmpty) {
       final mediaInfoMap = await SystemControlsService().getAudiosMediaInfo(
         directOnlyTracks.map((m) => m.path).toList(),
       );
-      for (int i = 0; i < directOnlyTracks.length; i++) {
-        final m = directOnlyTracks[i];
+      for (final m in directOnlyTracks) {
         final info = mediaInfoMap[m.path];
+        final lowerPath = m.path.toLowerCase();
+        final isRoxExtracted = lowerPath.contains('roxplayer') || lowerPath.contains('vidimax');
         if (info != null) {
           final durMs = (info['durationMs'] as num?)?.toInt() ?? 0;
-          final nativeArtist = info['artist'] as String? ?? '';
-          final nativeAlbum = info['album'] as String? ?? '';
-          directOnlyTracks[i] = m.copyWith(
-            duration: durMs > 0 ? Duration(milliseconds: durMs) : m.duration,
-            artist: nativeArtist.isNotEmpty ? nativeArtist : m.artist,
-            album: nativeAlbum.isNotEmpty ? nativeAlbum : m.album,
+          if (!isRoxExtracted && durMs > 0 && durMs < 15000) {
+            continue;
+          }
+          final nativeArtist = (info['artist'] as String? ?? '').trim();
+          final nativeAlbum = (info['album'] as String? ?? '').trim();
+          final nativeTitle = (info['title'] as String? ?? '').trim();
+          musicList.add(
+            m.copyWith(
+              title: nativeTitle.isNotEmpty ? nativeTitle : m.title,
+              duration: durMs > 0 ? Duration(milliseconds: durMs) : m.duration,
+              artist: nativeArtist.isNotEmpty ? nativeArtist : m.artist,
+              album: nativeAlbum.isNotEmpty ? nativeAlbum : m.album,
+            ),
           );
+        } else {
+          musicList.add(m);
         }
       }
-      musicList.addAll(directOnlyTracks);
     }
 
     // Sort by latest added first

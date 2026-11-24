@@ -689,7 +689,7 @@ class MainActivity : FlutterActivity() {
         val resultMap = HashMap<String, Map<String, Any>>(paths.size)
         if (paths.isEmpty()) return resultMap
 
-        data class StoreAudioMeta(val durationMs: Long, val artist: String, val album: String)
+        data class StoreAudioMeta(val durationMs: Long, val artist: String, val album: String, val title: String)
         val storeMap = HashMap<String, StoreAudioMeta>()
 
         try {
@@ -698,7 +698,8 @@ class MainActivity : FlutterActivity() {
                 MediaStore.Audio.Media.DATA,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.ALBUM
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.TITLE
             )
             contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -711,13 +712,15 @@ class MainActivity : FlutterActivity() {
                 val durIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DURATION)
                 val artIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)
                 val albIdx = cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val titleIdx = cursor.getColumnIndex(MediaStore.Audio.Media.TITLE)
                 while (cursor.moveToNext()) {
                     val filePath = if (dataIdx >= 0) cursor.getString(dataIdx) else null
                     if (!filePath.isNullOrBlank()) {
                         val dur = if (durIdx >= 0) cursor.getLong(durIdx) else 0L
                         val artist = if (artIdx >= 0) (cursor.getString(artIdx) ?: "") else ""
                         val album = if (albIdx >= 0) (cursor.getString(albIdx) ?: "") else ""
-                        storeMap[filePath] = StoreAudioMeta(dur, artist, album)
+                        val title = if (titleIdx >= 0) (cursor.getString(titleIdx) ?: "") else ""
+                        storeMap[normalizeMediaPathKey(filePath)] = StoreAudioMeta(dur, artist, album, title)
                     }
                 }
             }
@@ -725,24 +728,30 @@ class MainActivity : FlutterActivity() {
         }
 
         for (path in paths) {
-            val cached = storeMap[path]
+            val cached = storeMap[normalizeMediaPathKey(path)]
             var durMs = cached?.durationMs ?: 0L
             var artist = cached?.artist ?: ""
             var album = cached?.album ?: ""
+            var title = cached?.title ?: ""
 
-            if (durMs <= 0L) {
+            if (durMs <= 0L || title.isBlank()) {
                 val file = File(path)
                 if (file.exists()) {
                     val retriever = MediaMetadataRetriever()
                     try {
                         retriever.setDataSource(path)
-                        durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                            ?.toLongOrNull() ?: 0L
+                        if (durMs <= 0L) {
+                            durMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                ?.toLongOrNull() ?: 0L
+                        }
                         if (artist.isBlank() || artist == "<unknown>") {
                             artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: ""
                         }
                         if (album.isBlank() || album == "<unknown>") {
                             album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: ""
+                        }
+                        if (title.isBlank()) {
+                            title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) ?: ""
                         }
                     } catch (_: Exception) {
                     } finally {
@@ -760,7 +769,8 @@ class MainActivity : FlutterActivity() {
             resultMap[path] = mapOf(
                 "durationMs" to durMs.coerceAtLeast(0L),
                 "artist" to artist.trim(),
-                "album" to album.trim()
+                "album" to album.trim(),
+                "title" to title.trim()
             )
         }
 
@@ -1071,9 +1081,63 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun normalizeMediaPathKey(rawPath: String): String {
+        val resolved = try {
+            File(rawPath).canonicalPath
+        } catch (_: Exception) {
+            rawPath
+        }
+        var normalized = resolved.replace('\\', '/').trim()
+        val prefixes = listOf(
+            "/sdcard/",
+            "/mnt/sdcard/",
+            "/storage/self/primary/",
+            "/mnt/user/0/primary/"
+        )
+        val lower = normalized.lowercase(Locale.ROOT)
+        for (prefix in prefixes) {
+            if (lower.startsWith(prefix)) {
+                normalized = "/storage/emulated/0/" + normalized.substring(prefix.length)
+                break
+            }
+        }
+        return normalized.lowercase(Locale.ROOT)
+    }
+
+    private fun hasNomediaInAncestors(file: File, cache: MutableMap<String, Boolean>): Boolean {
+        var dir = file.parentFile
+        var depth = 0
+        while (dir != null && depth < 10) {
+            val dirPath = dir.absolutePath
+            val lowerDir = dirPath.lowercase(Locale.ROOT)
+            if (lowerDir == "/storage/emulated/0" || lowerDir == "/storage" || lowerDir == "/") {
+                break
+            }
+            val cached = cache[dirPath]
+            if (cached != null) {
+                if (cached) return true
+            } else {
+                val hasNomedia = try {
+                    File(dir, ".nomedia").exists()
+                } catch (_: Exception) {
+                    false
+                }
+                cache[dirPath] = hasNomedia
+                if (hasNomedia) return true
+            }
+            dir = dir.parentFile
+            depth++
+        }
+        return false
+    }
+
+    private val whatsappAudioNameRegex = Regex("^(aud|ptt)-?\\d{6,8}-wa\\d+.*", RegexOption.IGNORE_CASE)
+
     private fun queryAllDeviceAudioTracks(): List<Map<String, Any>> {
         val tracks = ArrayList<Map<String, Any>>()
-        val seenPaths = HashSet<String>()
+        val seenCanonicalPaths = HashSet<String>()
+        val seenSignatures = HashSet<String>()
+        val nomediaCache = HashMap<String, Boolean>()
         val supportedExts = setOf("mp3", "m4a", "wav", "aac", "flac", "ogg", "opus", "wma")
 
         val hasAudioPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -1104,7 +1168,10 @@ class MainActivity : FlutterActivity() {
                 MediaStore.Audio.Media.DATE_MODIFIED,
                 MediaStore.Audio.Media.DATE_ADDED,
                 MediaStore.Audio.Media.MIME_TYPE,
-                MediaStore.Audio.Media.IS_MUSIC
+                MediaStore.Audio.Media.IS_MUSIC,
+                MediaStore.Audio.Media.IS_RINGTONE,
+                MediaStore.Audio.Media.IS_ALARM,
+                MediaStore.Audio.Media.IS_NOTIFICATION
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 projectionList.add(MediaStore.Audio.Media.IS_PENDING)
@@ -1135,24 +1202,60 @@ class MainActivity : FlutterActivity() {
                 val addIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
                 val mimeIdx = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
                 val musicIdx = cursor.getColumnIndex(MediaStore.Audio.Media.IS_MUSIC)
+                val ringIdx = cursor.getColumnIndex(MediaStore.Audio.Media.IS_RINGTONE)
+                val alarmIdx = cursor.getColumnIndex(MediaStore.Audio.Media.IS_ALARM)
+                val notifIdx = cursor.getColumnIndex(MediaStore.Audio.Media.IS_NOTIFICATION)
 
                 while (cursor.moveToNext()) {
                     val filePath = if (dataIdx >= 0) cursor.getString(dataIdx) else null
                     if (filePath.isNullOrBlank()) continue
-                    if (!seenPaths.add(filePath)) continue
 
-                    // Skip Android trashed files, app-private cache files, or system tones
+                    val fileObj = File(filePath)
+                    if (!fileObj.exists()) continue
+
+                    val canonicalKey = normalizeMediaPathKey(filePath)
+                    if (!seenCanonicalPaths.add(canonicalKey)) continue
+
                     val fileName = (if (nameIdx >= 0) cursor.getString(nameIdx) else null)
-                        ?: File(filePath).name
-                    val lowerPath = filePath.lowercase(Locale.ROOT)
+                        ?.takeIf { it.isNotBlank() } ?: fileObj.name
+                    val lowerName = fileName.lowercase(Locale.ROOT)
+                    val lowerPath = canonicalKey
                     val isMusicFlag = if (musicIdx >= 0) cursor.getInt(musicIdx) else 0
-                    if (fileName.startsWith(".trashed-") ||
-                        fileName.startsWith(".") ||
+                    val isRingtoneFlag = if (ringIdx >= 0) cursor.getInt(ringIdx) else 0
+                    val isAlarmFlag = if (alarmIdx >= 0) cursor.getInt(alarmIdx) else 0
+                    val isNotifFlag = if (notifIdx >= 0) cursor.getInt(notifIdx) else 0
+
+                    // Standard Android Music Player exclusions:
+                    // 1. Hidden / trashed / .nomedia folders / Android private dirs / system tones
+                    if (lowerName.startsWith(".trashed-") ||
+                        lowerName.startsWith(".") ||
+                        lowerPath.contains("/.") ||
                         lowerPath.contains("/android/data/") ||
                         lowerPath.contains("/android/obb/") ||
-                        (isMusicFlag == 0 && (lowerPath.contains("/notifications/") ||
-                            lowerPath.contains("/ringtones/") ||
-                            lowerPath.contains("/alarms/")))) {
+                        isRingtoneFlag != 0 ||
+                        isAlarmFlag != 0 ||
+                        isNotifFlag != 0 ||
+                        lowerPath.contains("/notifications/") ||
+                        lowerPath.contains("/ringtones/") ||
+                        lowerPath.contains("/alarms/") ||
+                        lowerPath.contains("/ui/")) {
+                        continue
+                    }
+
+                    // 2. WhatsApp Audio, WhatsApp Voice Notes, Business/GBWhatsApp & Call Recordings
+                    if (lowerPath.contains("/whatsapp") ||
+                        lowerPath.contains("com.whatsapp") ||
+                        whatsappAudioNameRegex.matches(lowerName) ||
+                        lowerPath.contains("/callrecordings") ||
+                        lowerPath.contains("/call recordings") ||
+                        lowerPath.contains("/call_rec") ||
+                        lowerPath.contains("/callrecord") ||
+                        lowerPath.contains("/voicemail")) {
+                        continue
+                    }
+
+                    // 3. Respect .nomedia folders (standard Android music player trick)
+                    if (hasNomediaInAncestors(fileObj, nomediaCache)) {
                         continue
                     }
 
@@ -1163,8 +1266,10 @@ class MainActivity : FlutterActivity() {
                         isMusicFlag != 0
                     if (!isAudioFormat) continue
 
-                    val fileObj = File(filePath)
-                    if (!fileObj.exists()) continue
+                    // Voice note codec (.opus / .amr) not explicitly flagged as music
+                    if (isMusicFlag == 0 && (ext == "opus" || ext == "amr")) {
+                        continue
+                    }
 
                     val sizeBytes = if (sizeIdx >= 0) cursor.getLong(sizeIdx) else fileObj.length()
                     val effectiveSize = if (sizeBytes > 0L) sizeBytes else fileObj.length()
@@ -1197,6 +1302,18 @@ class MainActivity : FlutterActivity() {
                             } catch (_: Exception) {
                             }
                         }
+                    }
+
+                    // 4. Filter short non-music sound effects/voice clips (<15s), except RoxPlayer extracted tracks
+                    val isRoxExtracted = lowerPath.contains("roxplayer") || lowerPath.contains("vidimax")
+                    if (!isRoxExtracted && durMs in 1L..14999L) {
+                        continue
+                    }
+
+                    // 5. Deduplicate identical copies across mount aliases/duplicate folders
+                    val fileSig = "${lowerName}_$effectiveSize"
+                    if (!seenSignatures.add(fileSig)) {
+                        continue
                     }
 
                     val parentFolder = fileObj.parentFile?.name?.takeIf { it.isNotBlank() } ?: "Internal"

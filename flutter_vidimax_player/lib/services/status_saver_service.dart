@@ -56,10 +56,19 @@ class StatusSaverService {
     return false;
   }
 
+  String _canonicalPathKey(String rawPath) {
+    String resolved = rawPath;
+    try {
+      resolved = File(rawPath).resolveSymbolicLinksSync();
+    } catch (_) {}
+    return p.normalize(resolved).replaceAll('\\', '/').toLowerCase();
+  }
+
   /// Scan status directory for photos and videos securely
   Future<List<StatusItemModel>> fetchStatuses({StatusAppSource? filterSource}) async {
     final List<StatusItemModel> list = [];
-    final Set<String> uniquePaths = {};
+    final Set<String> seenCanonicalPaths = {};
+    final Set<String> seenSignatures = {};
 
     for (final dirPath in statusDirectories) {
       final dir = Directory(dirPath);
@@ -74,13 +83,15 @@ class StatusSaverService {
           for (final entity in entities) {
             if (entity is File) {
               final filePath = entity.path;
-              if (uniquePaths.contains(filePath)) continue;
+              final canonicalKey = _canonicalPathKey(filePath);
+              if (seenCanonicalPaths.contains(canonicalKey)) continue;
 
               final fileName = p.basename(filePath);
               final lowerName = fileName.toLowerCase();
 
               // Skip internal hidden files, .nomedia, and .thumb cache stubs
               if (fileName.startsWith('.') ||
+                  fileName.startsWith('.trashed-') ||
                   lowerName.contains('.thumb') ||
                   lowerName.endsWith('.nomedia')) {
                 continue;
@@ -101,12 +112,18 @@ class StatusSaverService {
                   continue;
                 }
 
-                uniquePaths.add(filePath);
+                // Prevent duplicate statuses when legacy /WhatsApp/ and Scoped /Android/media/ mirror or symlink
+                final sig = '${source.name}_${lowerName}_${stat.size}';
+                if (seenSignatures.contains(sig)) continue;
+
+                seenCanonicalPaths.add(canonicalKey);
+                seenSignatures.add(sig);
+
                 final isSaved = await _isStatusAlreadySaved(fileName, isVideo);
 
                 list.add(
                   StatusItemModel(
-                    id: filePath.hashCode.toString(),
+                    id: canonicalKey.hashCode.toString(),
                     title: fileName,
                     path: filePath,
                     file: entity,
